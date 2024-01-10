@@ -19,11 +19,10 @@ public:
     string log;
     string out_res_csv;
     double time_limit;
-    char var_name[100];
     double obj_val;
     double gap;
     double time_for_solve;
-
+    char var_name[1000];
     CuttingPlaneSolver();
     CuttingPlaneSolver(Data data, const char* output, string log, string out_res_csv, double time_limit);
     vector<vector<double>> create_optimal_sub_intervals(Data data, vector<int> initial_x);

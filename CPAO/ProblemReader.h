@@ -10,7 +10,8 @@ public:
 	int number_customers;
 	vector<vector<double>> utilities;
 	vector<double> revenue;
-	void read_data(string facilities_data);
+	vector<double> no_purchase;
+	void read_data(string facilities_data, double noPay);
 	void print_data();
 };
 #pragma once
