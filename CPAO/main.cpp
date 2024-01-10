@@ -14,6 +14,5 @@ int main(int argc, char* argv[]) {
     data.read_data(instance_file, noPay);
     //data.print_data();
     CuttingPlaneSolver cpoa;
-    vector<int> initial_x;
-    bool solved = cpoa.solve(data, initial_x);
+    bool solved = cpoa.solve(data);
 }

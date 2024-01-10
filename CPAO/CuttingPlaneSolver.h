@@ -1,5 +1,5 @@
 #include <iostream>
-#include <cmath>
+#include <math.h>
 #include <iomanip>
 #include <string>
 #include <fstream>
@@ -16,7 +16,7 @@ class CuttingPlaneSolver {
 public:
     Data data;
     const char* output;
-    string log;
+    string log_file;
     string out_res_csv;
     double time_limit;
     double obj_val;
@@ -25,6 +25,8 @@ public:
     char var_name[1000];
     CuttingPlaneSolver();
     CuttingPlaneSolver(Data data, const char* output, string log, string out_res_csv, double time_limit);
-    vector<vector<double>> create_optimal_sub_intervals(Data data, vector<int> initial_x);
-    bool solve(Data data, vector<int> initial_x);
+    vector<vector<double>> create_optimal_sub_intervals(Data data);
+    vector<double> calculate_y(Data data, vector<int> x, double alpha);
+    vector<double> calculate_z(Data data, vector<int> x, double alpha);
+    bool solve(Data data);
 };
