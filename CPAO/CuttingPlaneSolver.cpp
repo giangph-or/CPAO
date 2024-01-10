@@ -5,12 +5,8 @@ CuttingPlaneSolver::CuttingPlaneSolver() {
 
 }
 
-CuttingPlaneSolver::CuttingPlaneSolver(Data data, const char* output, string log_file, string out_res_csv, double time_limit) {
+CuttingPlaneSolver::CuttingPlaneSolver(Data data, double time_limit) {
     this->data = data;
-    this->time_limit = time_limit;
-    this->output = output;
-    this->log_file = log_file;
-    this->out_res_csv = out_res_csv;
     this->time_limit = time_limit;
 }
 
@@ -19,6 +15,7 @@ vector<vector<double>> CuttingPlaneSolver::create_optimal_sub_intervals(Data dat
     for (int j = 0; j < data.number_products; ++j)
         if (data.revenue[j] > alpha)
             alpha = data.revenue[j];
+
     vector<vector<double>> c(data.number_customers);
     for (int i = 0; i < data.number_customers; ++i)
         c[i].resize(10, 0);
@@ -43,25 +40,44 @@ vector<vector<double>> CuttingPlaneSolver::create_optimal_sub_intervals(Data dat
 }
 
 vector<double> CuttingPlaneSolver::calculate_y(Data data, vector<int> x, double alpha) {
+    cout << "y = " << endl;
     vector<double> y(data.number_customers);
     for (int i = 0; i < data.number_customers; ++i) {
         double tmp_y = alpha * data.no_purchase[i];
         for (int j = 0; j < data.number_products; ++j)
             tmp_y += (alpha - data.revenue[j]) * x[j] * data.utilities[i][j];
         y[i] = log(tmp_y);
+        cout << y[i] << " ";
     }
+    cout << endl;
     return y;
 }
 
 vector<double> CuttingPlaneSolver::calculate_z(Data data, vector<int> x, double alpha) {
+    cout << "z = " << endl;
     vector<double> z(data.number_customers);
     for (int i = 0; i < data.number_customers; ++i) {
         double tmp_z = data.no_purchase[i];
         for (int j = 0; j < data.number_products; ++j)
             tmp_z += x[j] * data.utilities[i][j];
         z[i] = -log(tmp_z);
+        cout << z[i] << " ";
     }
+    cout << endl;
     return z;
+}
+
+double  CuttingPlaneSolver::calculate_original_obj(Data data, vector<int> x, double alpha) {
+    double obj = 0;
+    for (int i = 0; i < data.number_customers; ++i) {
+        double ts = alpha * data.no_purchase[i], ms = data.no_purchase[i];
+        for (int j = 0; j < data.number_products; ++j) {
+            ts += (alpha - data.revenue[j]) * data.utilities[i][j];
+            ms += x[i] * data.utilities[i][j];
+        }
+        obj += ts / ms;
+    }
+    return obj;
 }
 
 bool CuttingPlaneSolver::solve(Data data) {
@@ -217,11 +233,11 @@ bool CuttingPlaneSolver::solve(Data data) {
     cplex.setParam(IloCplex::Param::MIP::Tolerances::MIPGap, 1e-8);
     IloNum run_time = time_limit;
     cplex.setParam(IloCplex::TiLim, run_time);
-    cplex.setParam(IloCplex::Threads, 2);
+    cplex.setParam(IloCplex::Threads, 4);
     cplex.exportModel("cpao.lp");
-    ofstream logfile(log_file);
-    cplex.setOut(logfile);
-    freopen(output, "w", stdout);
+    //string log_file;
+    //ofstream logfile(log_file);
+    //cplex.setOut(logfile);
 
     auto start = chrono::steady_clock::now(); //get start time
     auto end = chrono::steady_clock::now();
@@ -236,24 +252,18 @@ bool CuttingPlaneSolver::solve(Data data) {
     //Calculate initial_x, initial_y, initial_z
     vector<int> initial_x(data.number_products, 1);
     vector<double> initial_y = calculate_y(data, initial_x, alpha);
-    vector<double> initial_z = calculate_y(data, initial_x, alpha);
+    vector<double> initial_z = calculate_z(data, initial_x, alpha);
+    
+    cout << endl;
+    cout << "Add cut..." << endl;
 
     //Add cut iteratively
     while (original_obj > stop_param + obj_val_cplex) {
-        //compute e^{y+z} at initial_x, initial_y, initial_z
-        vector<double> partial_obj(data.number_customers);
-        for (int i = 0; i < data.number_customers; ++i) {
-            partial_obj[i] = exp(initial_y[i] + initial_z[i]);
-            //cout << partial_obj[i] << " ";
-        }
-        //cout << endl;
 
         //compute gradient e^{y+z} at initial_x, initial_y, initial_z and set up constraints related to theta
         for (int i = 0; i < data.number_customers; ++i) {
-            IloExpr grad(env);
-            grad += exp(initial_y[i]) + exp(initial_y[i]) * (y[i] - initial_y[i]) + exp(initial_z[i]) + exp(initial_z[i]) * (z[i] - initial_z[i]) + partial_obj[i];
             IloConstraint constraint;
-            constraint = IloConstraint(theta[i] >= grad);
+            constraint = IloConstraint(theta[i] >= exp(initial_y[i] + initial_z[i]) * (1 + y[i] - initial_y[i] + z[i] - initial_z[i]));
             sprintf_s(var_name, "ct_theta(%d)", i);
             constraint.setName(var_name);
             model.add(constraint);
@@ -282,16 +292,22 @@ bool CuttingPlaneSolver::solve(Data data) {
             obj_val_cplex = cplex.getObjValue();
             initial_x.resize(data.number_products);
             for (int j = 0; j < data.number_products; ++j)
-                if(cplex.getValue(x[j]) > 1 - tol) initial_x[j] = 1;
+                if (cplex.getValue(x[j]) > 0.5) {
+                    initial_x[j] = 1;
+                    cout << j << " ";
+                }
                 else initial_x[j] = 0;
+            cout << endl;
 
-            initial_y = calculate_y(data, initial_x, alpha);
-            initial_z = calculate_z(data, initial_x, alpha);
+            initial_y.resize(data.number_customers);
+            initial_z.resize(data.number_customers);
+            for (int i = 0; i < data.number_customers; ++i) {
+                initial_y[i] = cplex.getValue(y[i]);
+                initial_z[i] = cplex.getValue(z[i]);
+            }
             
             //update original obj
-            original_obj = 0;
-            for (int i = 0; i < data.number_customers; ++i)
-                original_obj += exp(initial_y[i] + initial_z[i]);
+            original_obj = calculate_original_obj(data, initial_x, alpha);
 
             cout << "G is: " << std::setprecision(5) << fixed << original_obj << endl;
             cout << "obj is: " << std::setprecision(5) << fixed << obj_val_cplex << endl;
@@ -317,6 +333,7 @@ bool CuttingPlaneSolver::solve(Data data) {
     elapsed_seconds = end - start;
     time_for_solve = elapsed_seconds.count();
     obj_val = data.number_customers * alpha - original_obj;
+    //obj_val = original_obj;
     
     cout << "Objective value: " << setprecision(5) << obj_val << endl;
 
