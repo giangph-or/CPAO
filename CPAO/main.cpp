@@ -2,6 +2,7 @@
 #include "ProblemReader.h"
 #include "CuttingPlaneSolver.h"
 #include "MILPSolver.h"
+#include "ConicMcSolver.h"
 #include <string>
 #include <iomanip>
 using namespace std;
@@ -26,5 +27,10 @@ int main(int argc, char* argv[]) {
         string out_file = "AO_result_milp//" + instance_name + "_" + budget + ".txt";
         MILPSolver milpoa(data, time_limit, out_file);
         milpoa.solve(data, stoi(budget));
+    }
+    if (model == "Conic") {
+        string out_file = "AO_result_conic//" + instance_name + "_" + budget + ".txt";
+        ConicMcSolver conicmcoa(data, time_limit, out_file);
+        conicmcoa.solve(data, stoi(budget));
     }
 }

@@ -99,7 +99,7 @@ void MILPSolver::solve(Data data, int budget) {
     IloExpr obj(env);
     for (int i = 0; i < data.number_customers; ++i)
         for(int j = 0; j < data.number_products; ++j)
-            obj += data.revenue[j] * z[i][j] * data.utilities[i][j];
+            obj += data.revenue[i][j] * z[i][j] * data.utilities[i][j];
     model.add(IloMaximize(env, obj));
 
     IloCplex cplex(model);
@@ -107,7 +107,7 @@ void MILPSolver::solve(Data data, int budget) {
     cplex.setParam(IloCplex::Param::MIP::Tolerances::MIPGap, 1e-8);
     IloNum run_time = time_limit;
     cplex.setParam(IloCplex::TiLim, run_time);
-    cplex.setParam(IloCplex::Threads, 8);
+    //cplex.setParam(IloCplex::Threads, 8);
     cplex.exportModel("milpao.lp");
     //string log_file;
     //ofstream logfile(log_file);

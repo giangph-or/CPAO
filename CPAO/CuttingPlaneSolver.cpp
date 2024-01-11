@@ -12,46 +12,40 @@ CuttingPlaneSolver::CuttingPlaneSolver(Data data, double time_limit, string outf
 }
 
 vector<vector<double>> CuttingPlaneSolver::create_optimal_sub_intervals(Data data, int number_itervals) {
-    double alpha = -1;
-    for (int j = 0; j < data.number_products; ++j)
-        if (data.revenue[j] > alpha)
-            alpha = data.revenue[j];
+    vector<double> alpha(data.number_customers, -1);
+    for (int i = 0; i < data.number_customers; ++i)
+        for (int j = 0; j < data.number_products; ++j)
+            if (data.revenue[i][j] > alpha[i])
+                alpha[i] = data.revenue[i][j];
 
     vector<vector<double>> c(data.number_customers);
     for (int i = 0; i < data.number_customers; ++i)
         c[i].resize(number_itervals + 1, 0);
     for (int i = 0; i < data.number_customers; ++i) {
-        c[i][0] = log(alpha * data.no_purchase[i]);
-        double upper = alpha * data.no_purchase[i];
+        c[i][0] = log(alpha[i] * data.no_purchase[i]);
+        double upper = alpha[i] * data.no_purchase[i];
         for (int j = 0; j < data.number_products; ++j)
-            upper += (alpha - data.revenue[j]) * data.utilities[i][j];
+            upper += (alpha[i] - data.revenue[i][j]) * data.utilities[i][j];
         c[i][c[i].size() - 1] = log(upper);
         for (int k = 1; k < c[i].size() - 1; ++k)
             c[i][k] = c[i][0] + k * (c[i][c[i].size() - 1] - c[i][0]) / number_itervals;
     }
 
-    //cout << "c^i_k = " << endl;
-    //for (int i = 0; i < data.number_customers; ++i) {
-    //    for (int k = 0; k < c[i].size(); ++k)
-    //        cout << c[i][k] << " ";
-    //    cout << endl;
-    //}
-
     return c;
 }
 
-vector<double> CuttingPlaneSolver::calculate_y(Data data, vector<int> x, double alpha) {
+vector<double> CuttingPlaneSolver::calculate_y(Data data, vector<int> x, vector<double> alpha) {
     vector<double> y(data.number_customers);
     for (int i = 0; i < data.number_customers; ++i) {
-        double tmp_y = alpha * data.no_purchase[i];
+        double tmp_y = alpha[i] * data.no_purchase[i];
         for (int j = 0; j < data.number_products; ++j)
-            tmp_y += (alpha - data.revenue[j]) * x[j] * data.utilities[i][j];
+            tmp_y += (alpha[i] - data.revenue[i][j]) * x[j] * data.utilities[i][j];
         y[i] = log(tmp_y);
     }
     return y;
 }
 
-vector<double> CuttingPlaneSolver::calculate_z(Data data, vector<int> x, double alpha) {
+vector<double> CuttingPlaneSolver::calculate_z(Data data, vector<int> x, vector<double> alpha) {
     vector<double> z(data.number_customers);
     for (int i = 0; i < data.number_customers; ++i) {
         double tmp_z = data.no_purchase[i];
@@ -62,12 +56,12 @@ vector<double> CuttingPlaneSolver::calculate_z(Data data, vector<int> x, double 
     return z;
 }
 
-double  CuttingPlaneSolver::calculate_original_obj(Data data, vector<int> x, double alpha) {
+double  CuttingPlaneSolver::calculate_original_obj(Data data, vector<int> x, vector<double> alpha) {
     double obj = 0;
     for (int i = 0; i < data.number_customers; ++i) {
-        double ts = alpha * data.no_purchase[i], ms = data.no_purchase[i];
+        double ts = alpha[i] * data.no_purchase[i], ms = data.no_purchase[i];
         for (int j = 0; j < data.number_products; ++j) {
-            ts += (alpha - data.revenue[j]) * x[j] * data.utilities[i][j];
+            ts += (alpha[i] - data.revenue[i][j]) * x[j] * data.utilities[i][j];
             ms += x[j] * data.utilities[i][j];
         }
         obj += ts / ms;
@@ -80,7 +74,7 @@ double  CuttingPlaneSolver::calculate_master_obj(Data data, vector<int> x) {
     for (int i = 0; i < data.number_customers; ++i) {
         double ts = 0, ms = data.no_purchase[i];
         for (int j = 0; j < data.number_products; ++j) {
-            ts += data.revenue[j] * x[j] * data.utilities[i][j];
+            ts += data.revenue[i][j] * x[j] * data.utilities[i][j];
             ms += x[j] * data.utilities[i][j];
         }
         obj += ts / ms;
@@ -89,10 +83,11 @@ double  CuttingPlaneSolver::calculate_master_obj(Data data, vector<int> x) {
 }
 
 void CuttingPlaneSolver::solve(Data data, int budget) {
-    double alpha = -1;
-    for (int j = 0; j < data.number_products; ++j)
-        if (data.revenue[j] > alpha)
-            alpha = data.revenue[j];
+    vector<double> alpha(data.number_customers, -1);
+    for (int i = 0; i < data.number_customers; ++i)
+        for (int j = 0; j < data.number_products; ++j)
+            if (data.revenue[i][j] > alpha[i])
+                alpha[i] = data.revenue[i][j];
 
     //Calculate initial_x, initial_y, initial_z
     vector<int> initial_x(data.number_products, 1);
@@ -100,23 +95,10 @@ void CuttingPlaneSolver::solve(Data data, int budget) {
     vector<double> initial_z = calculate_z(data, initial_x, alpha);
 
     //create bounds c^i_k for e^{y_i}
-    vector<vector<double>> c = create_optimal_sub_intervals(data, 20);
+    vector<vector<double>> c = create_optimal_sub_intervals(data, 250);
     vector<int> number_sub_intervals(data.number_customers);
     for (int i = 0; i < data.number_customers; ++i)
         number_sub_intervals[i] = c[i].size() - 1;
-
-    //create sigma^i_k
-    //vector<vector<double>> sigma (data.number_customers);
-    //for (int i = 0; i < data.number_customers; ++i)
-    //    for (int k = 0; k < number_sub_intervals[i]; ++k)
-    //        sigma[i].push_back((exp(c[i][k + 1]) - exp(c[i][k])) / (c[i][k + 1] - c[i][k]));
-
-    //cout << "sigma^i_k = " << endl;
-    //for (int i = 0; i < data.number_customers; ++i) {
-    //    for (int k = 0; k < number_sub_intervals[i]; ++k)
-    //        cout << sigma[i][k] << " ";
-    //    cout << endl;
-    //}
 
     //ILOSTLBEGIN
     IloEnv env;
@@ -179,7 +161,7 @@ void CuttingPlaneSolver::solve(Data data, int budget) {
             sum_r += (exp(c[i][k + 1]) - exp(c[i][k])) * r[i][k];
         }
         for (int j = 0; j < data.number_products; ++j)
-            sum_x += (alpha - data.revenue[j]) * x[j] * data.utilities[i][j];
+            sum_x += (alpha[i] - data.revenue[i][j]) * x[j] * data.utilities[i][j];
 
         IloConstraint constraint;
         constraint = IloConstraint(sum_r >= sum_x);
@@ -249,7 +231,7 @@ void CuttingPlaneSolver::solve(Data data, int budget) {
     cplex.setParam(IloCplex::Param::MIP::Tolerances::MIPGap, 1e-4);
     IloNum run_time = time_limit;
     cplex.setParam(IloCplex::TiLim, run_time);
-    cplex.setParam(IloCplex::Threads, 8);
+    //cplex.setParam(IloCplex::Threads, 8);
     cplex.exportModel("cpao.lp");
     string log_file;
     ofstream logfile(log_file);
@@ -292,7 +274,7 @@ void CuttingPlaneSolver::solve(Data data, int budget) {
         //solve
         num_iterative++;
         cplex.setParam(IloCplex::Param::TimeLimit, run_time);
-        cplex.setParam(IloCplex::Threads, 8);
+        //cplex.setParam(IloCplex::Threads, 8);
         //cplex.exportModel("cpao_.lp");
 
         if (cplex.solve()) {
