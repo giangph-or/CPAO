@@ -131,10 +131,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="MILPSolver.cpp" />
     <ClCompile Include="ProblemReader.cpp" />
     <ClCompile Include="CuttingPlaneSolver.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="MILPSolver.h" />
     <ClInclude Include="ProblemReader.h" />
     <ClInclude Include="CuttingPlaneSolver.h" />
   </ItemGroup>

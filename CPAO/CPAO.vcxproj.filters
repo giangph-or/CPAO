@@ -24,12 +24,18 @@
     <ClCompile Include="CuttingPlaneSolver.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="MILPSolver.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ProblemReader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="CuttingPlaneSolver.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MILPSolver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
