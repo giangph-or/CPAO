@@ -11,7 +11,7 @@ CuttingPlaneSolver::CuttingPlaneSolver(Data data, double time_limit, string outf
     this->out_res_csv = outfile;
 }
 
-vector<vector<double>> CuttingPlaneSolver::create_optimal_sub_intervals(Data data) {
+vector<vector<double>> CuttingPlaneSolver::create_optimal_sub_intervals(Data data, int number_itervals) {
     double alpha = -1;
     for (int j = 0; j < data.number_products; ++j)
         if (data.revenue[j] > alpha)
@@ -19,7 +19,7 @@ vector<vector<double>> CuttingPlaneSolver::create_optimal_sub_intervals(Data dat
 
     vector<vector<double>> c(data.number_customers);
     for (int i = 0; i < data.number_customers; ++i)
-        c[i].resize(10, 0);
+        c[i].resize(number_itervals + 1, 0);
     for (int i = 0; i < data.number_customers; ++i) {
         c[i][0] = log(alpha * data.no_purchase[i]);
         double upper = log(alpha * data.no_purchase[i]);
@@ -27,7 +27,7 @@ vector<vector<double>> CuttingPlaneSolver::create_optimal_sub_intervals(Data dat
             upper += (alpha - data.revenue[j]) * data.utilities[i][j];
         c[i][c[i].size() - 1] = log(upper);
         for (int k = 1; k < c[i].size() - 1; ++k)
-            c[i][k] = c[i][0] + k * (c[i][c[i].size() - 1] - c[i][0]) / 9;
+            c[i][k] = c[i][0] + k * (c[i][c[i].size() - 1] - c[i][0]) / number_itervals;
     }
 
     //cout << "c^i_k = " << endl;
@@ -106,15 +106,16 @@ void CuttingPlaneSolver::solve(Data data) {
     vector<double> initial_z = calculate_z(data, initial_x, alpha);
 
     //create bounds c^i_k for e^{y_i}
-    vector<vector<double>> c = create_optimal_sub_intervals(data);
+    vector<vector<double>> c = create_optimal_sub_intervals(data, 20);
     vector<int> number_sub_intervals(data.number_customers);
     for (int i = 0; i < data.number_customers; ++i)
         number_sub_intervals[i] = c[i].size() - 1;
+
     //create sigma^i_k
-    vector<vector<double>> sigma (data.number_customers);
-    for (int i = 0; i < data.number_customers; ++i)
-        for (int k = 0; k < number_sub_intervals[i]; ++k)
-            sigma[i].push_back((exp(c[i][k + 1]) - exp(c[i][k])) / (c[i][k + 1] - c[i][k]));
+    //vector<vector<double>> sigma (data.number_customers);
+    //for (int i = 0; i < data.number_customers; ++i)
+    //    for (int k = 0; k < number_sub_intervals[i]; ++k)
+    //        sigma[i].push_back((exp(c[i][k + 1]) - exp(c[i][k])) / (c[i][k + 1] - c[i][k]));
 
     //cout << "sigma^i_k = " << endl;
     //for (int i = 0; i < data.number_customers; ++i) {
@@ -182,10 +183,12 @@ void CuttingPlaneSolver::solve(Data data) {
     }
 
     //Constraints related to e^{y_i}
+    //exp(c[i][0]) = alpha * no_purchase[i] => remove form both sides
     for (int i = 0; i < data.number_customers; ++i) {
         IloExpr sum_r(env), sum_x(env);
         for (int k = 0; k < number_sub_intervals[i]; ++k) {
-            sum_r += sigma[i][k] * (c[i][k + 1] - c[i][k]) * r[i][k];
+            //sum_r += sigma[i][k] * (c[i][k + 1] - c[i][k]) * r[i][k];
+            sum_r += (exp(c[i][k + 1]) - exp(c[i][k])) * r[i][k];
         }
         for (int j = 0; j < data.number_products; ++j)
             sum_x += (alpha - data.revenue[j]) * x[j] * data.utilities[i][j];
@@ -254,9 +257,9 @@ void CuttingPlaneSolver::solve(Data data) {
     cplex.setParam(IloCplex::TiLim, run_time);
     cplex.setParam(IloCplex::Threads, 8);
     cplex.exportModel("cpao.lp");
-    //string log_file;
-    //ofstream logfile(log_file);
-    //cplex.setOut(logfile);
+    string log_file;
+    ofstream logfile(log_file);
+    cplex.setOut(logfile);
 
     auto start = chrono::steady_clock::now(); //get start time
     auto end = chrono::steady_clock::now();
@@ -330,6 +333,7 @@ void CuttingPlaneSolver::solve(Data data) {
             cout << "\nsub obj = " << std::setprecision(5) << fixed << sub_obj << endl;
             cout << "cplex obj = " << std::setprecision(5) << fixed << obj_val_cplex << endl;
             cout << "origin obj = " << std::setprecision(5) << fixed << calculate_original_obj(data, initial_x, alpha) << endl;
+            cout << "master obj = " << std::setprecision(5) << fixed << calculate_master_obj(data, initial_x) << endl;
 
             //check time
             auto time_now = std::chrono::steady_clock::now(); //get now time

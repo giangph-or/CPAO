@@ -25,7 +25,7 @@ public:
     char var_name[1000];
     CuttingPlaneSolver();
     CuttingPlaneSolver(Data data, double time_limit, string outfile);
-    vector<vector<double>> create_optimal_sub_intervals(Data data);
+    vector<vector<double>> create_optimal_sub_intervals(Data data, int number_itervals);
     vector<double> calculate_y(Data data, vector<int> x, double alpha);
     vector<double> calculate_z(Data data, vector<int> x, double alpha);
     double calculate_original_obj(Data data, vector<int> x, double alpha);
