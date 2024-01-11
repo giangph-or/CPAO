@@ -93,13 +93,14 @@ double  ConicMcSolver::calculate_master_obj(Data data, vector<int> x) {
 }
 
 void ConicMcSolver::solve(Data data, int budget) {
+    auto start = chrono::steady_clock::now(); //get start time
+
     vector<double> alpha(data.number_customers, -1);
     for (int i = 0; i < data.number_customers; ++i)
         for (int j = 0; j < data.number_products; ++j)
             if (data.revenue[i][j] > alpha[i])
                 alpha[i] = data.revenue[i][j];
 
-    auto start = chrono::steady_clock::now(); //get start time
     vector<vector<int>> bound(data.number_customers);
     for (int i = 0; i < data.number_customers; ++i)
         bound[i] = find_bound_y(data, i, budget);
@@ -248,8 +249,8 @@ void ConicMcSolver::solve(Data data, int budget) {
     }
     model.add(IloMinimize(env, obj));
 
-    auto end = chrono::steady_clock::now();
-    chrono::duration<double> elapsed_seconds = end - start;
+    auto time_now = chrono::steady_clock::now();
+    chrono::duration<double> elapsed_seconds = time_now - start;
 
     IloCplex cplex(model);
     IloNum tol = cplex.getParam(IloCplex::EpInt);
@@ -258,9 +259,9 @@ void ConicMcSolver::solve(Data data, int budget) {
     cplex.setParam(IloCplex::TiLim, run_time);
     //cplex.setParam(IloCplex::Threads, 8);
     cplex.exportModel("conicao.lp");
-    //string log_file;
-    //ofstream logfile(log_file);
-    //cplex.setOut(logfile);
+    string log_file;
+    ofstream logfile(log_file);
+    cplex.setOut(logfile);
 
     double obj_value;
     vector<int> x_sol(data.number_products);
@@ -300,12 +301,12 @@ void ConicMcSolver::solve(Data data, int budget) {
     }
     else {
         cout << "No solution found..." << endl;
-        end = chrono::steady_clock::now();
+        auto end = chrono::steady_clock::now();
         elapsed_seconds = end - start;
         time_for_solve = elapsed_seconds.count();
     }
 
-    end = chrono::steady_clock::now();
+    auto end = chrono::steady_clock::now();
     elapsed_seconds = end - start;
     time_for_solve = elapsed_seconds.count();
 

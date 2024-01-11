@@ -83,6 +83,11 @@ double  CuttingPlaneSolver::calculate_master_obj(Data data, vector<int> x) {
 }
 
 void CuttingPlaneSolver::solve(Data data, int budget) {
+    auto start = chrono::steady_clock::now(); //get start time
+
+    double best_obj = 0;
+    vector<int> best_x;
+
     vector<double> alpha(data.number_customers, -1);
     for (int i = 0; i < data.number_customers; ++i)
         for (int j = 0; j < data.number_products; ++j)
@@ -95,7 +100,7 @@ void CuttingPlaneSolver::solve(Data data, int budget) {
     vector<double> initial_z = calculate_z(data, initial_x, alpha);
 
     //create bounds c^i_k for e^{y_i}
-    vector<vector<double>> c = create_optimal_sub_intervals(data, 250);
+    vector<vector<double>> c = create_optimal_sub_intervals(data, 500);
     vector<int> number_sub_intervals(data.number_customers);
     for (int i = 0; i < data.number_customers; ++i)
         number_sub_intervals[i] = c[i].size() - 1;
@@ -230,16 +235,12 @@ void CuttingPlaneSolver::solve(Data data, int budget) {
     IloNum tol = cplex.getParam(IloCplex::EpInt);
     cplex.setParam(IloCplex::Param::MIP::Tolerances::MIPGap, 1e-4);
     IloNum run_time = time_limit;
-    cplex.setParam(IloCplex::TiLim, run_time);
+    //cplex.setParam(IloCplex::TiLim, run_time);
     //cplex.setParam(IloCplex::Threads, 8);
     cplex.exportModel("cpao.lp");
     string log_file;
     ofstream logfile(log_file);
     cplex.setOut(logfile);
-
-    auto start = chrono::steady_clock::now(); //get start time
-    auto end = chrono::steady_clock::now();
-    chrono::duration<double> elapsed_seconds = end - start;
 
     int num_iterative = 0;
     double stop_param = 0.0001;
@@ -302,8 +303,13 @@ void CuttingPlaneSolver::solve(Data data, int budget) {
 
             cout << "\nsub obj = " << std::setprecision(5) << fixed << sub_obj << endl;
             cout << "cplex obj = " << std::setprecision(5) << fixed << obj_val_cplex << endl;
-            cout << "origin obj = " << std::setprecision(5) << fixed << calculate_original_obj(data, initial_x, alpha) << endl;
-            cout << "master obj = " << std::setprecision(5) << fixed << calculate_master_obj(data, initial_x) << endl;
+            master_obj_val = calculate_master_obj(data, initial_x);
+            cout << "master obj = " << std::setprecision(5) << fixed << master_obj_val << endl;
+
+            if (master_obj_val > best_obj) {
+                best_obj = master_obj_val;
+                best_x = initial_x;
+            }
 
             //check time
             auto time_now = std::chrono::steady_clock::now(); //get now time
@@ -316,25 +322,24 @@ void CuttingPlaneSolver::solve(Data data, int budget) {
         }
         else {
             cout << "Iteration " << num_iterative << ". No solution found..." << endl;
-            end = chrono::steady_clock::now();
-            elapsed_seconds = end - start;
+            auto end = chrono::steady_clock::now();
+            chrono::duration<double> elapsed_seconds = end - start;
             time_for_solve = elapsed_seconds.count();
             break;
         }
     }
-    end = chrono::steady_clock::now();
-    elapsed_seconds = end - start;
+    auto end = chrono::steady_clock::now();
+    chrono::duration<double> elapsed_seconds = end - start;
     time_for_solve = elapsed_seconds.count();
-    master_obj_val = calculate_master_obj(data, initial_x);
     
-    cout << "\nObjective value: " << setprecision(5) << master_obj_val << endl;
+    cout << "\nObjective value: " << setprecision(5) << best_obj << endl;
     cout << "Solving, it took " << time_for_solve << " seconds" << endl;
 
     ofstream report_results(out_res_csv, ofstream::out);
     report_results.precision(10);
-    report_results << master_obj_val << " " << time_for_solve << endl;
+    report_results << best_obj << " " << time_for_solve << endl;
     for (int j = 0; j < data.number_products; ++j)
-        if(initial_x[j] == 1)
+        if(best_x[j] == 1)
             report_results << j << " ";
     report_results.close();
     env.end();
