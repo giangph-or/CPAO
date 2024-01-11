@@ -25,5 +25,5 @@ public:
     char var_name[1000];
     MILPSolver();
     MILPSolver(Data data, double time_limit, string outfile);
-    void solve(Data data);
+    void solve(Data data, int budget);
 };

@@ -30,5 +30,5 @@ public:
     vector<double> calculate_z(Data data, vector<int> x, double alpha);
     double calculate_original_obj(Data data, vector<int> x, double alpha);
     double calculate_master_obj(Data data, vector<int> x);
-    void solve(Data data);
+    void solve(Data data, int budget);
 };

@@ -11,7 +11,7 @@ MILPSolver::MILPSolver(Data data, double time_limit, string outfile) {
     this->out_res_csv = outfile;
 }
 
-void MILPSolver::solve(Data data) {
+void MILPSolver::solve(Data data, int budget) {
 
     IloEnv env;
     IloModel model(env);
@@ -21,7 +21,6 @@ void MILPSolver::solve(Data data) {
     for (int j = 0; j < data.number_products; ++j) {
         sprintf_s(var_name, "x(%d)", j);
         x[j] = IloIntVar(env, 0, 1, var_name);
-        //cout << "x_" << j << endl;
     }
 
     //Slack variables: y_i
@@ -29,7 +28,6 @@ void MILPSolver::solve(Data data) {
     for (int i = 0; i < data.number_customers; ++i) {
         sprintf_s(var_name, "y(%d)", i);
         y[i] = IloNumVar(env, 0, INFINITY, var_name);
-        //cout << "y_" << i << endl;
     }
 
     //Slack variables: z_{ij}
@@ -54,7 +52,6 @@ void MILPSolver::solve(Data data) {
         sprintf_s(var_name, "ct_yz(%d)", i);
         constraint.setName(var_name);
         model.add(constraint);
-        //cout << "ct_yz_" << i << endl;
     }
 
     //Constraints related to x, y and z
@@ -65,7 +62,6 @@ void MILPSolver::solve(Data data) {
             sprintf_s(var_name, "ct_xyz(%d,%d)", i, j);
             constraint.setName(var_name);
             model.add(constraint);
-            //cout << "ct_xyz_" << i << "_" << j << endl;
         }
 
     //Bound z
@@ -76,7 +72,6 @@ void MILPSolver::solve(Data data) {
             sprintf_s(var_name, "ct_z(%d,%d)", i, j);
             constraint.setName(var_name);
             model.add(constraint);
-            //cout << "ct_z_" << i << "_" << j << endl;
         }
 
     //Constraints related to x and z
@@ -87,8 +82,18 @@ void MILPSolver::solve(Data data) {
             sprintf_s(var_name, "ct_xz(%d,%d)", i, j);
             constraint.setName(var_name);
             model.add(constraint);
-            //cout << "ct_xz_" << i << "_" << j << endl;
         }
+
+    //Budget constraint
+    IloExpr capacity(env);
+    for (int j = 0; j < data.number_products; ++j) {
+        capacity += x[j];
+    }
+    IloConstraint constraint;
+    constraint = IloConstraint(capacity <= budget);
+    sprintf_s(var_name, "ct_budget");
+    constraint.setName(var_name);
+    model.add(constraint);
 
     //Objective
     IloExpr obj(env);
