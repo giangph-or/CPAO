@@ -21,7 +21,7 @@ vector<vector<double>> CuttingPlaneSolver::create_optimal_sub_intervals(Data dat
         c[i].resize(10, 0);
     for (int i = 0; i < data.number_customers; ++i) {
         c[i][0] = log(alpha * data.no_purchase[i]);
-        double upper = 0;
+        double upper = log(alpha * data.no_purchase[i]);
         for (int j = 0; j < data.number_products; ++j)
             upper += (alpha - data.revenue[j]) * data.utilities[i][j];
         c[i][c[i].size() - 1] = log(upper);
@@ -40,30 +40,30 @@ vector<vector<double>> CuttingPlaneSolver::create_optimal_sub_intervals(Data dat
 }
 
 vector<double> CuttingPlaneSolver::calculate_y(Data data, vector<int> x, double alpha) {
-    cout << "y = " << endl;
+    //cout << "y = " << endl;
     vector<double> y(data.number_customers);
     for (int i = 0; i < data.number_customers; ++i) {
         double tmp_y = alpha * data.no_purchase[i];
         for (int j = 0; j < data.number_products; ++j)
             tmp_y += (alpha - data.revenue[j]) * x[j] * data.utilities[i][j];
         y[i] = log(tmp_y);
-        cout << y[i] << " ";
+        //cout << y[i] << " ";
     }
-    cout << endl;
+    //cout << endl;
     return y;
 }
 
 vector<double> CuttingPlaneSolver::calculate_z(Data data, vector<int> x, double alpha) {
-    cout << "z = " << endl;
+    //cout << "z = " << endl;
     vector<double> z(data.number_customers);
     for (int i = 0; i < data.number_customers; ++i) {
         double tmp_z = data.no_purchase[i];
         for (int j = 0; j < data.number_products; ++j)
             tmp_z += x[j] * data.utilities[i][j];
         z[i] = -log(tmp_z);
-        cout << z[i] << " ";
+        //cout << z[i] << " ";
     }
-    cout << endl;
+    //cout << endl;
     return z;
 }
 
@@ -72,7 +72,7 @@ double  CuttingPlaneSolver::calculate_original_obj(Data data, vector<int> x, dou
     for (int i = 0; i < data.number_customers; ++i) {
         double ts = alpha * data.no_purchase[i], ms = data.no_purchase[i];
         for (int j = 0; j < data.number_products; ++j) {
-            ts += (alpha - data.revenue[j]) * data.utilities[i][j];
+            ts += (alpha - data.revenue[j]) * x[i] * data.utilities[i][j];
             ms += x[i] * data.utilities[i][j];
         }
         obj += ts / ms;
@@ -85,6 +85,11 @@ bool CuttingPlaneSolver::solve(Data data) {
     for (int j = 0; j < data.number_products; ++j)
         if (data.revenue[j] > alpha)
             alpha = data.revenue[j];
+
+    //Calculate initial_x, initial_y, initial_z
+    vector<int> initial_x(data.number_products, 1);
+    vector<double> initial_y = calculate_y(data, initial_x, alpha);
+    vector<double> initial_z = calculate_z(data, initial_x, alpha);
 
     //create bounds c^i_k for e^{y_i}
     vector<vector<double>> c = create_optimal_sub_intervals(data);
@@ -172,7 +177,8 @@ bool CuttingPlaneSolver::solve(Data data) {
             sum_x += (alpha - data.revenue[j]) * x[j] * data.utilities[i][j];
 
         IloConstraint constraint;
-        constraint = IloConstraint(exp(c[i][0]) + sum_r >= alpha * data.no_purchase[i] + sum_x);
+        //constraint = IloConstraint(exp(c[i][0]) + sum_r >= alpha * data.no_purchase[i] + sum_x);
+        constraint = IloConstraint(sum_r >= sum_x);
         sprintf_s(var_name, "ct_e(%d)", i);
         constraint.setName(var_name);
         model.add(constraint);
@@ -235,9 +241,9 @@ bool CuttingPlaneSolver::solve(Data data) {
     cplex.setParam(IloCplex::TiLim, run_time);
     cplex.setParam(IloCplex::Threads, 4);
     cplex.exportModel("cpao.lp");
-    //string log_file;
-    //ofstream logfile(log_file);
-    //cplex.setOut(logfile);
+    string log_file;
+    ofstream logfile(log_file);
+    cplex.setOut(logfile);
 
     auto start = chrono::steady_clock::now(); //get start time
     auto end = chrono::steady_clock::now();
@@ -248,14 +254,6 @@ bool CuttingPlaneSolver::solve(Data data) {
     double stop_param = 0.0001;
     double original_obj = 1.0;
     double obj_val_cplex = 0.0;
-
-    //Calculate initial_x, initial_y, initial_z
-    vector<int> initial_x(data.number_products, 1);
-    vector<double> initial_y = calculate_y(data, initial_x, alpha);
-    vector<double> initial_z = calculate_z(data, initial_x, alpha);
-    
-    cout << endl;
-    cout << "Add cut..." << endl;
 
     //Add cut iteratively
     while (original_obj > stop_param + obj_val_cplex) {
@@ -276,7 +274,7 @@ bool CuttingPlaneSolver::solve(Data data) {
                 sum += x[j] * data.utilities[i][j];
             sum += data.no_purchase[i];
             IloConstraint constraint;
-            constraint = IloConstraint(exp(-initial_z[i]) - exp(-initial_z[i]) * (z[i] - initial_z[i]) <= sum);
+            constraint = IloConstraint(exp(-initial_z[i]) * (1 - z[i] + initial_z[i]) <= sum);
             sprintf_s(var_name, "ct_ez(%d)", i);
             constraint.setName(var_name);
             model.add(constraint);
@@ -285,12 +283,14 @@ bool CuttingPlaneSolver::solve(Data data) {
         //solve
         num_iterative++;
         cplex.setParam(IloCplex::Param::TimeLimit, run_time);
+        cplex.setParam(IloCplex::Threads, 4);
+        //cplex.exportModel("cpao_.lp");
 
         if (cplex.solve()) {
             cout << "Solved!" << endl;
             //update obj, variables
             obj_val_cplex = cplex.getObjValue();
-            initial_x.resize(data.number_products);
+
             for (int j = 0; j < data.number_products; ++j)
                 if (cplex.getValue(x[j]) > 0.5) {
                     initial_x[j] = 1;
@@ -299,15 +299,15 @@ bool CuttingPlaneSolver::solve(Data data) {
                 else initial_x[j] = 0;
             cout << endl;
 
-            initial_y.resize(data.number_customers);
-            initial_z.resize(data.number_customers);
             for (int i = 0; i < data.number_customers; ++i) {
                 initial_y[i] = cplex.getValue(y[i]);
                 initial_z[i] = cplex.getValue(z[i]);
             }
-            
-            //update original obj
-            original_obj = calculate_original_obj(data, initial_x, alpha);
+
+            original_obj = 0;
+            for (int i = 0; i < data.number_customers; ++i) {
+                original_obj += exp(initial_y[i] + initial_z[i]);
+            }
 
             cout << "G is: " << std::setprecision(5) << fixed << original_obj << endl;
             cout << "obj is: " << std::setprecision(5) << fixed << obj_val_cplex << endl;
