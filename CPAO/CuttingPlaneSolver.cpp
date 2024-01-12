@@ -45,6 +45,9 @@ vector<int> CuttingPlaneSolver::greedy(Data data, int budget) {
 		cout << chosen[j] << " ";
 	cout << endl;
 	cout << "master obj = " << obj << endl;
+	cout << endl;
+
+	return chosen;
 }
 
 double CuttingPlaneSolver::calculate_sum_utility(Data data, int budget, int i, double alpha) {
