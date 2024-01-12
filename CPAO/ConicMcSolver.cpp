@@ -259,9 +259,9 @@ void ConicMcSolver::solve(Data data, int budget) {
     cplex.setParam(IloCplex::TiLim, run_time);
     //cplex.setParam(IloCplex::Threads, 8);
     cplex.exportModel("conicao.lp");
-    string log_file;
-    ofstream logfile(log_file);
-    cplex.setOut(logfile);
+    //string log_file;
+    //ofstream logfile(log_file);
+    //cplex.setOut(logfile);
 
     double obj_value;
     vector<int> x_sol(data.number_products);

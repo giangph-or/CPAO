@@ -25,10 +25,11 @@ public:
     char var_name[1000];
     CuttingPlaneSolver();
     CuttingPlaneSolver(Data data, double time_limit, string outfile);
-    vector<vector<double>> create_optimal_sub_intervals(Data data, int number_itervals);
+    vector<vector<double>> create_optimal_sub_intervals(Data data, int budget, vector<double> alpha, int number_itervals);
     vector<double> calculate_y(Data data, vector<int> x, vector<double> alpha);
     vector<double> calculate_z(Data data, vector<int> x, vector<double> alpha);
     double calculate_original_obj(Data data, vector<int> x, vector<double> alpha);
     double calculate_master_obj(Data data, vector<int> x);
+    double calculate_sum_utility(Data data, int budget, int i, double alpha);
     void solve(Data data, int budget);
 };

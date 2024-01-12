@@ -163,24 +163,24 @@ void MILPSolver::solve(Data data, int budget) {
     //    }
 
     //Bound z
-    //for (int i = 0; i < data.number_customers; ++i)
-    //    for (int j = 0; j < data.number_products; ++j) {
-    //        IloConstraint constraint;
-    //        constraint = IloConstraint(z[i][j] <= y[i]);
-    //        sprintf_s(var_name, "ct_z(%d,%d)", i, j);
-    //        constraint.setName(var_name);
-    //        model.add(constraint);
-    //    }
+    for (int i = 0; i < data.number_customers; ++i)
+        for (int j = 0; j < data.number_products; ++j) {
+            IloConstraint constraint;
+            constraint = IloConstraint(z[i][j] <= y[i]);
+            sprintf_s(var_name, "ct_z(%d,%d)", i, j);
+            constraint.setName(var_name);
+            model.add(constraint);
+        }
 
     //Constraints related to x and z
-    //for (int i = 0; i < data.number_customers; ++i)
-    //    for (int j = 0; j < data.number_products; ++j) {
-    //        IloConstraint constraint;
-    //        constraint = IloConstraint(data.no_purchase[i] * z[i][j] <= x[j]);
-    //        sprintf_s(var_name, "ct_xz(%d,%d)", i, j);
-    //        constraint.setName(var_name);
-    //        model.add(constraint);
-    //    }
+    for (int i = 0; i < data.number_customers; ++i)
+        for (int j = 0; j < data.number_products; ++j) {
+            IloConstraint constraint;
+            constraint = IloConstraint(data.no_purchase[i] * z[i][j] <= x[j]);
+            sprintf_s(var_name, "ct_xz(%d,%d)", i, j);
+            constraint.setName(var_name);
+            model.add(constraint);
+        }
 
     //McCornick constraints
     for (int i = 0; i < data.number_customers; ++i)
@@ -247,7 +247,6 @@ void MILPSolver::solve(Data data, int budget) {
     //ofstream logfile(log_file);
     //cplex.setOut(logfile);
 
-    double obj_value;
     vector<int> x_sol(data.number_products);
     vector<double> y_sol(data.number_customers);
     vector<vector<double>> z_sol(data.number_customers);
@@ -255,7 +254,7 @@ void MILPSolver::solve(Data data, int budget) {
         z_sol[i].resize(data.number_products);
 
     if (cplex.solve()) {
-        obj_value = cplex.getObjValue();
+        obj_val = cplex.getObjValue();
         cout << "\nResult product list: " << endl;
         for (int j = 0; j < data.number_products; ++j)
             if (cplex.getValue(x[j]) > 0.5) {
@@ -271,7 +270,7 @@ void MILPSolver::solve(Data data, int budget) {
                 z_sol[i][j] = cplex.getValue(z[i][j]);
         }
 
-        cout << "MILP obj = " << std::setprecision(5) << fixed << obj_value << endl;
+        cout << "MILP obj = " << std::setprecision(5) << fixed << obj_val << endl;
 
         //check time
         auto time_now = std::chrono::steady_clock::now(); //get now time
@@ -292,7 +291,7 @@ void MILPSolver::solve(Data data, int budget) {
 
     ofstream report_results(out_res_csv, ofstream::out);
     report_results.precision(10);
-    report_results << obj_value << " " << time_for_solve << endl;
+    report_results << obj_val << " " << time_for_solve << endl;
     for (int j = 0; j < data.number_products; ++j)
         if(x_sol[j] == 1)
             report_results << j << " ";

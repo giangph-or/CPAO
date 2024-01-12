@@ -1,5 +1,6 @@
 #include "CuttingPlaneSolver.h"
-#include<chrono>
+#include <chrono>
+#include <algorithm>
 
 CuttingPlaneSolver::CuttingPlaneSolver() {
 
@@ -11,21 +12,27 @@ CuttingPlaneSolver::CuttingPlaneSolver(Data data, double time_limit, string outf
     this->out_res_csv = outfile;
 }
 
-vector<vector<double>> CuttingPlaneSolver::create_optimal_sub_intervals(Data data, int number_itervals) {
-    vector<double> alpha(data.number_customers, -1);
-    for (int i = 0; i < data.number_customers; ++i)
-        for (int j = 0; j < data.number_products; ++j)
-            if (data.revenue[i][j] > alpha[i])
-                alpha[i] = data.revenue[i][j];
+double CuttingPlaneSolver::calculate_sum_utility(Data data, int budget, int i, double alpha) {
+    double sum = 0;
+    vector<double> u(data.number_products);
+    for (int j = 0; j < data.number_products; ++j)
+        u[j] = (alpha - data.revenue[i][j]) * data.utilities[i][j];
 
+    sort(u.begin(), u.end(), greater<double>());
+
+    for (int j = 0; j < budget; ++j)
+        sum += u[j];
+
+    return sum;
+}
+
+vector<vector<double>> CuttingPlaneSolver::create_optimal_sub_intervals(Data data, int budget, vector<double> alpha, int number_itervals) {
     vector<vector<double>> c(data.number_customers);
     for (int i = 0; i < data.number_customers; ++i)
         c[i].resize(number_itervals + 1, 0);
     for (int i = 0; i < data.number_customers; ++i) {
         c[i][0] = log(alpha[i] * data.no_purchase[i]);
-        double upper = alpha[i] * data.no_purchase[i];
-        for (int j = 0; j < data.number_products; ++j)
-            upper += (alpha[i] - data.revenue[i][j]) * data.utilities[i][j];
+        double upper = alpha[i] * data.no_purchase[i] + calculate_sum_utility(data, budget, i, alpha[i]);
         c[i][c[i].size() - 1] = log(upper);
         for (int k = 1; k < c[i].size() - 1; ++k)
             c[i][k] = c[i][0] + k * (c[i][c[i].size() - 1] - c[i][0]) / number_itervals;
@@ -42,6 +49,7 @@ vector<double> CuttingPlaneSolver::calculate_y(Data data, vector<int> x, vector<
             tmp_y += (alpha[i] - data.revenue[i][j]) * x[j] * data.utilities[i][j];
         y[i] = log(tmp_y);
     }
+
     return y;
 }
 
@@ -53,6 +61,7 @@ vector<double> CuttingPlaneSolver::calculate_z(Data data, vector<int> x, vector<
             tmp_z += x[j] * data.utilities[i][j];
         z[i] = -log(tmp_z);
     }
+
     return z;
 }
 
@@ -66,6 +75,7 @@ double  CuttingPlaneSolver::calculate_original_obj(Data data, vector<int> x, vec
         }
         obj += ts / ms;
     }
+
     return obj;
 }
 
@@ -79,6 +89,7 @@ double  CuttingPlaneSolver::calculate_master_obj(Data data, vector<int> x) {
         }
         obj += ts / ms;
     }
+
     return obj;
 }
 
@@ -100,7 +111,7 @@ void CuttingPlaneSolver::solve(Data data, int budget) {
     vector<double> initial_z = calculate_z(data, initial_x, alpha);
 
     //create bounds c^i_k for e^{y_i}
-    vector<vector<double>> c = create_optimal_sub_intervals(data, 500);
+    vector<vector<double>> c = create_optimal_sub_intervals(data, budget, alpha, 200);
     vector<int> number_sub_intervals(data.number_customers);
     for (int i = 0; i < data.number_customers; ++i)
         number_sub_intervals[i] = c[i].size() - 1;
@@ -333,7 +344,7 @@ void CuttingPlaneSolver::solve(Data data, int budget) {
     time_for_solve = elapsed_seconds.count();
     
     cout << "\nObjective value: " << setprecision(5) << best_obj << endl;
-    cout << "Solving, it took " << time_for_solve << " seconds" << endl;
+    cout << "Total time: " << time_for_solve << " seconds" << endl;
 
     ofstream report_results(out_res_csv, ofstream::out);
     report_results.precision(10);
