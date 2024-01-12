@@ -12,7 +12,8 @@ CuttingPlaneSolver::CuttingPlaneSolver(Data data, double time_limit, string outf
 	this->out_res_csv = outfile;
 }
 
-vector<int> CuttingPlaneSolver::greedy(Data data, int budget) {
+pair<vector<int>,double> CuttingPlaneSolver::greedy(Data data, int budget) {
+	auto start = chrono::steady_clock::now();
 	vector<int> chosen(data.number_products, 0);
 	double obj = 0;
 	int number_chosen = 0;
@@ -27,12 +28,10 @@ vector<int> CuttingPlaneSolver::greedy(Data data, int budget) {
 				if (max < extra_ratio) {
 					max = extra_ratio;
 					inserted_product = j;
-					break;
 				}
 			}
 		}
 		if (inserted_product != -1) {
-			double distance;
 			chosen[inserted_product] = 1;
 			//cout << "Best-Insertion: " << inserted_product << endl;
 			obj += max;
@@ -40,14 +39,22 @@ vector<int> CuttingPlaneSolver::greedy(Data data, int budget) {
 		}
 	}
 
+	auto end = chrono::steady_clock::now();
+	std::chrono::duration<double> greedy_time = end - start;
+
 	cout << "greedy solution: " << endl;
 	for (int j = 0; j < data.number_products; j++)
-		cout << chosen[j] << " ";
+		if(chosen[j] == 1)
+			cout << j << " ";
 	cout << endl;
 	cout << "master obj = " << obj << endl;
-	cout << endl;
+	cout << "time: " << greedy_time.count() << endl;
 
-	return chosen;
+	pair<vector<int>,double> result;
+	result.first = chosen;
+	result.second = obj;
+
+	return result;
 }
 
 double CuttingPlaneSolver::calculate_sum_utility(Data data, int budget, int i, double alpha) {
@@ -151,9 +158,6 @@ double CuttingPlaneSolver::calculate_master_obj_tmp(Data data, vector<int> x, in
 void CuttingPlaneSolver::solve(Data data, int budget) {
 	auto start = chrono::steady_clock::now(); //get start time
 
-	double best_obj = 0;
-	vector<int> best_x;
-
 	vector<double> alpha(data.number_customers, -1);
 	for (int i = 0; i < data.number_customers; ++i)
 		for (int j = 0; j < data.number_products; ++j)
@@ -161,7 +165,12 @@ void CuttingPlaneSolver::solve(Data data, int budget) {
 				alpha[i] = data.revenue[i][j];
 
 	//Calculate initial_x, initial_y, initial_z
-	vector<int> initial_x = greedy(data, budget);
+	pair<vector<int>,double> g = greedy(data, budget);
+	vector<int> initial_x = g.first;
+
+	vector<int> best_x = g.first;
+	double best_obj = g.second;
+
 	vector<double> initial_y = calculate_y(data, initial_x, alpha);
 	vector<double> initial_z = calculate_z(data, initial_x, alpha);
 
@@ -398,11 +407,15 @@ void CuttingPlaneSolver::solve(Data data, int budget) {
 		}
 	}
 	auto end = chrono::steady_clock::now();
-	chrono::duration<double> elapsed_seconds = end - start;
-	time_for_solve = elapsed_seconds.count();
+	chrono::duration<double> total_time= end - start;
+	time_for_solve = total_time.count();
 
 	cout << "\nObjective value: " << setprecision(5) << best_obj << endl;
-	cout << "Total time: " << time_for_solve << " seconds" << endl;
+	cout << "Solution: ";
+	for (int j = 0; j < data.number_products; ++j)
+		if (best_x[j] == 1)
+			cout << j << " ";
+	cout << "\nTotal time: " << time_for_solve << " seconds" << endl;
 
 	ofstream report_results(out_res_csv, ofstream::out);
 	report_results.precision(10);

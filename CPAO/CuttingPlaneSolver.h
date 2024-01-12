@@ -32,6 +32,6 @@ public:
     double calculate_master_obj(Data data, vector<int> x);
     double calculate_master_obj_tmp(Data data, vector<int> x, int i);
     double calculate_sum_utility(Data data, int budget, int i, double alpha);
-    vector<int> greedy(Data data, int budget);
+    pair<vector<int>,double> greedy(Data data, int budget);
     void solve(Data data, int budget);
 };
