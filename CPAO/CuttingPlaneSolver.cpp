@@ -12,7 +12,7 @@ CuttingPlaneSolver::CuttingPlaneSolver(Data data, double time_limit, string outf
 	this->out_res_csv = outfile;
 }
 
-pair<vector<int>,double> CuttingPlaneSolver::greedy(Data data, int budget) {
+vector<int> CuttingPlaneSolver::greedy(Data data, int budget, vector<double> alpha) {
 	auto start = chrono::steady_clock::now();
 	vector<int> chosen(data.number_products, 0);
 	double obj = 0;
@@ -21,12 +21,12 @@ pair<vector<int>,double> CuttingPlaneSolver::greedy(Data data, int budget) {
 	while (number_chosen < budget) {
 		double extra_ratio = 0;
 		int inserted_product = -1;
-		double max = 0;
+		double min = 999999;
 		for (int j = 0; j < data.number_products; ++j) {
 			if (chosen[j] == 0) {
-				extra_ratio = calculate_master_obj_tmp(data, chosen, j) - obj;
-				if (max < extra_ratio) {
-					max = extra_ratio;
+				extra_ratio = calculate_original_obj_tmp(data, chosen, alpha, j) - obj;
+				if (min > extra_ratio) {
+					min = extra_ratio;
 					inserted_product = j;
 				}
 			}
@@ -34,7 +34,7 @@ pair<vector<int>,double> CuttingPlaneSolver::greedy(Data data, int budget) {
 		if (inserted_product != -1) {
 			chosen[inserted_product] = 1;
 			//cout << "Best-Insertion: " << inserted_product << endl;
-			obj += max;
+			obj = calculate_original_obj(data, chosen, alpha);
 			number_chosen++;
 		}
 	}
@@ -47,17 +47,17 @@ pair<vector<int>,double> CuttingPlaneSolver::greedy(Data data, int budget) {
 		if(chosen[j] == 1)
 			cout << j << " ";
 	cout << endl;
-	cout << "master obj = " << obj << endl;
+	cout << "original obj = " << obj << endl;
+	double master_obj = 0;
+	for (int i = 0; i < data.number_customers; i++)
+		master_obj += alpha[i];
+	cout << "master obj = " << master_obj - obj << endl;
 	cout << "time: " << greedy_time.count() << endl;
 
-	pair<vector<int>,double> result;
-	result.first = chosen;
-	result.second = obj;
-
-	return result;
+	return chosen;
 }
 
-double CuttingPlaneSolver::calculate_sum_utility(Data data, int budget, int i, double alpha) {
+double CuttingPlaneSolver::calculate_bound_y(Data data, int budget, int i, double alpha) {
 	double sum = 0;
 	vector<double> u(data.number_products);
 	for (int j = 0; j < data.number_products; ++j)
@@ -77,7 +77,7 @@ vector<vector<double>> CuttingPlaneSolver::create_optimal_sub_intervals(Data dat
 		c[i].resize(number_itervals + 1, 0);
 	for (int i = 0; i < data.number_customers; ++i) {
 		c[i][0] = log(alpha[i] * data.no_purchase[i]);
-		double upper = alpha[i] * data.no_purchase[i] + calculate_sum_utility(data, budget, i, alpha[i]);
+		double upper = alpha[i] * data.no_purchase[i] + calculate_bound_y(data, budget, i, alpha[i]);
 		c[i][c[i].size() - 1] = log(upper);
 		for (int k = 1; k < c[i].size() - 1; ++k)
 			c[i][k] = c[i][0] + k * (c[i][c[i].size() - 1] - c[i][0]) / number_itervals;
@@ -138,13 +138,12 @@ double CuttingPlaneSolver::calculate_master_obj(Data data, vector<int> x) {
 	return obj;
 }
 
-double CuttingPlaneSolver::calculate_master_obj_tmp(Data data, vector<int> x, int candidate) {
+double CuttingPlaneSolver::calculate_original_obj_tmp(Data data, vector<int> x, vector<double> alpha, int candidate) {
 	double obj = 0;
 	for (int i = 0; i < data.number_customers; ++i) {
-		double ts = data.revenue[i][candidate] * data.utilities[i][candidate], 
+		double ts = alpha[i] * data.no_purchase[i] + (alpha[i] - data.revenue[i][candidate]) * data.utilities[i][candidate],
 			ms = data.no_purchase[i] + data.utilities[i][candidate];
-		for (int j = 0; j < data.number_products; ++j)
-			if (j != candidate) {
+		for (int j = 0; j < data.number_products; ++j){
 				ts += data.revenue[i][j] * x[j] * data.utilities[i][j];
 				ms += x[j] * data.utilities[i][j];
 			}
@@ -165,11 +164,10 @@ void CuttingPlaneSolver::solve(Data data, int budget) {
 				alpha[i] = data.revenue[i][j];
 
 	//Calculate initial_x, initial_y, initial_z
-	pair<vector<int>,double> g = greedy(data, budget);
-	vector<int> initial_x = g.first;
+	vector<int> initial_x = greedy(data, budget, alpha);
 
-	vector<int> best_x = g.first;
-	double best_obj = g.second;
+	vector<int> best_x = initial_x;
+	double best_obj = calculate_master_obj(data, best_x);
 
 	vector<double> initial_y = calculate_y(data, initial_x, alpha);
 	vector<double> initial_z = calculate_z(data, initial_x, alpha);
@@ -237,7 +235,6 @@ void CuttingPlaneSolver::solve(Data data, int budget) {
 	for (int i = 0; i < data.number_customers; ++i) {
 		IloExpr sum_r(env), sum_x(env);
 		for (int k = 0; k < number_sub_intervals[i]; ++k) {
-			//sum_r += sigma[i][k] * (c[i][k + 1] - c[i][k]) * r[i][k];
 			sum_r += (exp(c[i][k + 1]) - exp(c[i][k])) * r[i][k];
 		}
 		for (int j = 0; j < data.number_products; ++j)

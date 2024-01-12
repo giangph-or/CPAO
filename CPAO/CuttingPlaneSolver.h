@@ -30,8 +30,8 @@ public:
     vector<double> calculate_z(Data data, vector<int> x, vector<double> alpha);
     double calculate_original_obj(Data data, vector<int> x, vector<double> alpha);
     double calculate_master_obj(Data data, vector<int> x);
-    double calculate_master_obj_tmp(Data data, vector<int> x, int i);
-    double calculate_sum_utility(Data data, int budget, int i, double alpha);
-    pair<vector<int>,double> greedy(Data data, int budget);
+    double calculate_original_obj_tmp(Data data, vector<int> x, vector<double> alpha, int i);
+    double calculate_bound_y(Data data, int budget, int i, double alpha);
+    vector<int> greedy(Data data, int budget, vector<double> alpha);
     void solve(Data data, int budget);
 };
