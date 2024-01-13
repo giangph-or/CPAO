@@ -42,6 +42,7 @@ vector<int> ConicMcSolver::find_bound_y(Data data, int i, int budget) {
     IloCplex cplex(model);
     IloNum tol = cplex.getParam(IloCplex::EpInt);
     cplex.setParam(IloCplex::Param::MIP::Tolerances::MIPGap, 1e-8);
+    cplex.setParam(IloCplex::Threads, 1);
     IloNum run_time = time_limit;
     cplex.setParam(IloCplex::TiLim, run_time);
     string log_file;
@@ -257,8 +258,8 @@ void ConicMcSolver::solve(Data data, int budget) {
     cplex.setParam(IloCplex::Param::MIP::Tolerances::MIPGap, 1e-8);
     IloNum run_time = time_limit - elapsed_seconds.count();
     cplex.setParam(IloCplex::TiLim, run_time);
-    //cplex.setParam(IloCplex::Threads, 8);
-    cplex.exportModel("conicao.lp");
+    cplex.setParam(IloCplex::Threads, 1);
+    //cplex.exportModel("conic_ao.lp");
     string log_file;
     ofstream logfile(log_file);
     cplex.setOut(logfile);
@@ -296,7 +297,7 @@ void ConicMcSolver::solve(Data data, int budget) {
         //check time
         auto time_now = std::chrono::steady_clock::now(); //get now time
         std::chrono::duration<double> total_time = time_now - start;
-        cout << "time now: " << total_time.count() << endl;
+        cout << "Time now: " << total_time.count() << endl;
         cout << "--- --- --- --- --- --- ---" << endl;
     }
     else {
