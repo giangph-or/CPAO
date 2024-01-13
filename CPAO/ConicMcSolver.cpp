@@ -111,12 +111,10 @@ void ConicMcSolver::solve(Data data, int budget) {
         y_l[i].resize(data.number_products);
     for (int i = 0; i < data.number_customers; ++i)
         for (int j = 0; j < data.number_products; ++j)
-            if (bound[i][j] == 1) {
+            if (bound[i][j] == 1)
                 y_l[i][j] = 1.0 / (data.no_purchase[i] + data.utilities[i][j] + calculate_sum_utility(data, budget - 1, i, j));
-            }
-            else {
+            else
                 y_l[i][j] = 1.0 / (data.no_purchase[i] + calculate_sum_utility(data, budget, i, j));
-            }
 
     IloEnv env;
     IloModel model(env);
@@ -202,7 +200,7 @@ void ConicMcSolver::solve(Data data, int budget) {
         for (int j = 0; j < data.number_products; ++j)
             if(bound[i][j] == 1){
                 IloConstraint constraint;
-                constraint = IloConstraint(z[i][j] <= 1.0 / (data.no_purchase[i] + data.utilities[i][j]) * x[j]);
+                constraint = IloConstraint(z[i][j] * (data.no_purchase[i] + data.utilities[i][j])  <= x[j]);
                 sprintf_s(var_name, "ct_zy_u1(%d)", i);
                 constraint.setName(var_name);
                 model.add(constraint);
@@ -221,11 +219,12 @@ void ConicMcSolver::solve(Data data, int budget) {
                 model.add(constraint);
             }
 
+    //Constraints related to x, y and z
     for (int i = 0; i < data.number_customers; ++i)
         for (int j = 0; j < data.number_products; ++j) {
             IloConstraint constraint;
-            constraint = IloConstraint(z[i][j] >= y[i] - 1.0 / data.no_purchase[i] * (1 - x[j]));
-            sprintf_s(var_name, "ct_zy_u(%d)", i);
+            constraint = IloConstraint(data.no_purchase[i] * (y[i] - z[i][j]) <= 1 - x[j]);
+            sprintf_s(var_name, "ct_xyz(%d,%d)", i, j);
             constraint.setName(var_name);
             model.add(constraint);
         }

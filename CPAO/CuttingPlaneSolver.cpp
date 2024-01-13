@@ -12,6 +12,74 @@ CuttingPlaneSolver::CuttingPlaneSolver(Data data, double time_limit, string outf
 	this->out_res_csv = outfile;
 }
 
+vector<double> CuttingPlaneSolver::calculate_y(Data data, vector<int> x, vector<double> alpha) {
+	vector<double> y(data.number_customers);
+	for (int i = 0; i < data.number_customers; ++i) {
+		double tmp_y = alpha[i] * data.no_purchase[i];
+		for (int j = 0; j < data.number_products; ++j)
+			tmp_y += (alpha[i] - data.revenue[i][j]) * x[j] * data.utilities[i][j];
+		y[i] = log(tmp_y);
+	}
+
+	return y;
+}
+
+vector<double> CuttingPlaneSolver::calculate_z(Data data, vector<int> x) {
+	vector<double> z(data.number_customers);
+	for (int i = 0; i < data.number_customers; ++i) {
+		double tmp_z = data.no_purchase[i];
+		for (int j = 0; j < data.number_products; ++j)
+			tmp_z += x[j] * data.utilities[i][j];
+		z[i] = -log(tmp_z);
+	}
+
+	return z;
+}
+
+double  CuttingPlaneSolver::calculate_original_obj(Data data, vector<int> x, vector<double> alpha) {
+	double obj = 0;
+	for (int i = 0; i < data.number_customers; ++i) {
+		double ts = alpha[i] * data.no_purchase[i], ms = data.no_purchase[i];
+		for (int j = 0; j < data.number_products; ++j) {
+			ts += (alpha[i] - data.revenue[i][j]) * x[j] * data.utilities[i][j];
+			ms += x[j] * data.utilities[i][j];
+		}
+		obj += ts / ms;
+	}
+
+	return obj;
+}
+
+double CuttingPlaneSolver::calculate_master_obj(Data data, vector<int> x) {
+	double obj = 0;
+	for (int i = 0; i < data.number_customers; ++i) {
+		double ts = 0, ms = data.no_purchase[i];
+		for (int j = 0; j < data.number_products; ++j) {
+			ts += data.revenue[i][j] * x[j] * data.utilities[i][j];
+			ms += x[j] * data.utilities[i][j];
+		}
+		obj += ts / ms;
+	}
+
+	return obj;
+}
+
+double CuttingPlaneSolver::calculate_original_obj_tmp(Data data, vector<int> x, vector<double> alpha, int candidate) {
+	double obj = 0;
+	for (int i = 0; i < data.number_customers; ++i) {
+		double ts = alpha[i] * data.no_purchase[i] + (alpha[i] - data.revenue[i][candidate]) * data.utilities[i][candidate],
+			ms = data.no_purchase[i] + data.utilities[i][candidate];
+		for (int j = 0; j < data.number_products; ++j) {
+			ts += data.revenue[i][j] * x[j] * data.utilities[i][j];
+			ms += x[j] * data.utilities[i][j];
+		}
+
+		obj += ts / ms;
+	}
+
+	return obj;
+}
+
 vector<int> CuttingPlaneSolver::greedy(Data data, int budget, vector<double> alpha) {
 	auto start = chrono::steady_clock::now();
 	vector<int> chosen(data.number_products, 0);
@@ -111,7 +179,7 @@ double CuttingPlaneSolver::calculate_optimal_bound_y(Data data, int budget, int 
 	return cplex.getObjValue();
 }
 
-vector<vector<double>> CuttingPlaneSolver::create_optimal_sub_intervals(Data data, int budget, vector<double> alpha, int number_itervals) {
+vector<vector<double>> CuttingPlaneSolver::create_sub_intervals(Data data, int budget, vector<double> alpha, int number_itervals) {
 	vector<vector<double>> c(data.number_customers);
 	for (int i = 0; i < data.number_customers; ++i)
 		c[i].resize(number_itervals + 1, 0);
@@ -126,72 +194,32 @@ vector<vector<double>> CuttingPlaneSolver::create_optimal_sub_intervals(Data dat
 	return c;
 }
 
-vector<double> CuttingPlaneSolver::calculate_y(Data data, vector<int> x, vector<double> alpha) {
-	vector<double> y(data.number_customers);
-	for (int i = 0; i < data.number_customers; ++i) {
-		double tmp_y = alpha[i] * data.no_purchase[i];
-		for (int j = 0; j < data.number_products; ++j)
-			tmp_y += (alpha[i] - data.revenue[i][j]) * x[j] * data.utilities[i][j];
-		y[i] = log(tmp_y);
+double CuttingPlaneSolver::next_approximate_point(double b, double epsilon) {
+	double x = b + 0.001;
+	int count = 0;
+	while (exp(b) + (exp(x) - exp(b)) / (x - b) * (log((exp(x) - exp(b)) / (x - b)) - b) - (exp(x) - exp(b)) / (x - b) <= epsilon) {
+		x += 0.001;
+		count++;
 	}
-
-	return y;
+	//cout << b << " " << x << " " << count << endl;
+	return x;
 }
 
-vector<double> CuttingPlaneSolver::calculate_z(Data data, vector<int> x) {
-	vector<double> z(data.number_customers);
+vector<vector<double>> CuttingPlaneSolver::optimal_sub_intervals(Data data, int budget, vector<double> alpha, double epsilon) {
+	vector<vector<double>> c(data.number_customers);
 	for (int i = 0; i < data.number_customers; ++i) {
-		double tmp_z = data.no_purchase[i];
-		for (int j = 0; j < data.number_products; ++j)
-			tmp_z += x[j] * data.utilities[i][j];
-		z[i] = -log(tmp_z);
-	}
-
-	return z;
-}
-
-double  CuttingPlaneSolver::calculate_original_obj(Data data, vector<int> x, vector<double> alpha) {
-	double obj = 0;
-	for (int i = 0; i < data.number_customers; ++i) {
-		double ts = alpha[i] * data.no_purchase[i], ms = data.no_purchase[i];
-		for (int j = 0; j < data.number_products; ++j) {
-			ts += (alpha[i] - data.revenue[i][j]) * x[j] * data.utilities[i][j];
-			ms += x[j] * data.utilities[i][j];
+		c[i].push_back(log(alpha[i] * data.no_purchase[i]));
+		double upper = log(alpha[i] * data.no_purchase[i] + calculate_bound_y(data, budget, i, alpha[i]));
+		double x = 0;
+		while (x <= upper) {
+			x = next_approximate_point(c[i][c[i].size() - 1], epsilon);
+			c[i].push_back(x);
 		}
-		obj += ts / ms;
+		c[i].push_back(upper);
+		//cout << c[i].size() << endl;
 	}
 
-	return obj;
-}
-
-double CuttingPlaneSolver::calculate_master_obj(Data data, vector<int> x) {
-	double obj = 0;
-	for (int i = 0; i < data.number_customers; ++i) {
-		double ts = 0, ms = data.no_purchase[i];
-		for (int j = 0; j < data.number_products; ++j) {
-			ts += data.revenue[i][j] * x[j] * data.utilities[i][j];
-			ms += x[j] * data.utilities[i][j];
-		}
-		obj += ts / ms;
-	}
-
-	return obj;
-}
-
-double CuttingPlaneSolver::calculate_original_obj_tmp(Data data, vector<int> x, vector<double> alpha, int candidate) {
-	double obj = 0;
-	for (int i = 0; i < data.number_customers; ++i) {
-		double ts = alpha[i] * data.no_purchase[i] + (alpha[i] - data.revenue[i][candidate]) * data.utilities[i][candidate],
-			ms = data.no_purchase[i] + data.utilities[i][candidate];
-		for (int j = 0; j < data.number_products; ++j){
-				ts += data.revenue[i][j] * x[j] * data.utilities[i][j];
-				ms += x[j] * data.utilities[i][j];
-			}
-
-		obj += ts / ms;
-	}
-
-	return obj;
+	return c;
 }
 
 void CuttingPlaneSolver::solve(Data data, int budget) {
@@ -213,7 +241,8 @@ void CuttingPlaneSolver::solve(Data data, int budget) {
 	vector<double> initial_z = calculate_z(data, initial_x);
 
 	//create bounds c^i_k for e^{y_i}
-	vector<vector<double>> c = create_optimal_sub_intervals(data, budget, alpha, 100);
+	//vector<vector<double>> c = create_sub_intervals(data, budget, alpha, 200);
+	vector<vector<double>> c = optimal_sub_intervals(data, budget, alpha, 0.0001);
 	vector<int> number_sub_intervals(data.number_customers);
 	for (int i = 0; i < data.number_customers; ++i)
 		number_sub_intervals[i] = c[i].size() - 1;
@@ -393,7 +422,7 @@ void CuttingPlaneSolver::solve(Data data, int budget) {
 		cplex.setOut(logfile);
 
 		if (cplex.solve()) {
-			cout << "\nIteration " << num_iterative << ": Solved!" << endl;
+			cout << "\nIteration " << num_iterative << endl;
 			//update obj, variables
 			obj_val_cplex = cplex.getObjValue();
 			cout << "\nResult product list: " << endl;
@@ -405,13 +434,13 @@ void CuttingPlaneSolver::solve(Data data, int budget) {
 				else initial_x[j] = 0;
 			cout << endl;
 
-			//for (int i = 0; i < data.number_customers; ++i) {
-			//	initial_y[i] = cplex.getValue(y[i]);
-			//	initial_z[i] = cplex.getValue(z[i]);
-			//}
+			for (int i = 0; i < data.number_customers; ++i) {
+				initial_y[i] = cplex.getValue(y[i]);
+				initial_z[i] = cplex.getValue(z[i]);
+			}
 
-			initial_y = calculate_y(data, initial_x, alpha);
-			initial_z = calculate_z(data, initial_x);
+			//initial_y = calculate_y(data, initial_x, alpha);
+			//initial_z = calculate_z(data, initial_x);
 
 			sub_obj = 0;
 			for (int i = 0; i < data.number_customers; ++i) {

@@ -153,41 +153,41 @@ void MILPSolver::solve(Data data, int budget) {
     }
 
     //Constraints related to x, y and z
+    for (int i = 0; i < data.number_customers; ++i)
+        for (int j = 0; j < data.number_products; ++j) {
+            IloConstraint constraint;
+            constraint = IloConstraint(data.no_purchase[i] * (y[i] - z[i][j]) <= 1 - x[j]);
+            sprintf_s(var_name, "ct_xyz(%d,%d)", i, j);
+            constraint.setName(var_name);
+            model.add(constraint);
+        }
+
+    //Bound z
     //for (int i = 0; i < data.number_customers; ++i)
     //    for (int j = 0; j < data.number_products; ++j) {
     //        IloConstraint constraint;
-    //        constraint = IloConstraint(data.no_purchase[i] * (y[i] - z[i][j]) <= 1 - x[j]);
-    //        sprintf_s(var_name, "ct_xyz(%d,%d)", i, j);
+    //        constraint = IloConstraint(z[i][j] <= y[i]);
+    //        sprintf_s(var_name, "ct_z(%d,%d)", i, j);
     //        constraint.setName(var_name);
     //        model.add(constraint);
     //    }
 
-    //Bound z
-    for (int i = 0; i < data.number_customers; ++i)
-        for (int j = 0; j < data.number_products; ++j) {
-            IloConstraint constraint;
-            constraint = IloConstraint(z[i][j] <= y[i]);
-            sprintf_s(var_name, "ct_z(%d,%d)", i, j);
-            constraint.setName(var_name);
-            model.add(constraint);
-        }
-
     //Constraints related to x and z
-    for (int i = 0; i < data.number_customers; ++i)
-        for (int j = 0; j < data.number_products; ++j) {
-            IloConstraint constraint;
-            constraint = IloConstraint(data.no_purchase[i] * z[i][j] <= x[j]);
-            sprintf_s(var_name, "ct_xz(%d,%d)", i, j);
-            constraint.setName(var_name);
-            model.add(constraint);
-        }
+    //for (int i = 0; i < data.number_customers; ++i)
+    //    for (int j = 0; j < data.number_products; ++j) {
+    //        IloConstraint constraint;
+    //        constraint = IloConstraint(data.no_purchase[i] * z[i][j] <= x[j]);
+    //        sprintf_s(var_name, "ct_xz(%d,%d)", i, j);
+    //        constraint.setName(var_name);
+    //        model.add(constraint);
+    //    }
 
     //McCornick constraints
     for (int i = 0; i < data.number_customers; ++i)
         for (int j = 0; j < data.number_products; ++j)
             if (bound[i][j] == 1) {
                 IloConstraint constraint;
-                constraint = IloConstraint(z[i][j] <= 1.0 / (data.no_purchase[i] + data.utilities[i][j]) * x[j]);
+                constraint = IloConstraint(z[i][j] * (data.no_purchase[i] + data.utilities[i][j]) <= x[j]);
                 sprintf_s(var_name, "ct_zy_u1(%d)", i);
                 constraint.setName(var_name);
                 model.add(constraint);
@@ -205,15 +205,6 @@ void MILPSolver::solve(Data data, int budget) {
                 constraint.setName(var_name);
                 model.add(constraint);
             }
-
-    for (int i = 0; i < data.number_customers; ++i)
-        for (int j = 0; j < data.number_products; ++j) {
-            IloConstraint constraint;
-            constraint = IloConstraint(z[i][j] >= y[i] - 1.0 / data.no_purchase[i] * (1 - x[j]));
-            sprintf_s(var_name, "ct_zy_u(%d)", i);
-            constraint.setName(var_name);
-            model.add(constraint);
-        }
 
     //Budget constraint
     IloExpr capacity(env);

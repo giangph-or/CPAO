@@ -135,12 +135,14 @@
     <ClCompile Include="MILPSolver.cpp" />
     <ClCompile Include="ProblemReader.cpp" />
     <ClCompile Include="CuttingPlaneSolver.cpp" />
+    <ClCompile Include="SolutionReader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ConicMcSolver.h" />
     <ClInclude Include="MILPSolver.h" />
     <ClInclude Include="ProblemReader.h" />
     <ClInclude Include="CuttingPlaneSolver.h" />
+    <ClInclude Include="SolutionReader.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
