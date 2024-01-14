@@ -257,7 +257,7 @@ void ConicMcSolver::solve(Data data, int budget) {
     cplex.setParam(IloCplex::Param::MIP::Tolerances::MIPGap, 1e-8);
     IloNum run_time = time_limit - elapsed_seconds.count();
     cplex.setParam(IloCplex::TiLim, run_time);
-    cplex.setParam(IloCplex::Threads, 1);
+    //cplex.setParam(IloCplex::Threads, 4);
     //cplex.exportModel("conic_ao.lp");
     string log_file;
     ofstream logfile(log_file);

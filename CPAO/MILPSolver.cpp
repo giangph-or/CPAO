@@ -163,24 +163,24 @@ void MILPSolver::solve(Data data, int budget) {
         }
 
     //Bound z
-    //for (int i = 0; i < data.number_customers; ++i)
-    //    for (int j = 0; j < data.number_products; ++j) {
-    //        IloConstraint constraint;
-    //        constraint = IloConstraint(z[i][j] <= y[i]);
-    //        sprintf_s(var_name, "ct_z(%d,%d)", i, j);
-    //        constraint.setName(var_name);
-    //        model.add(constraint);
-    //    }
+    for (int i = 0; i < data.number_customers; ++i)
+        for (int j = 0; j < data.number_products; ++j) {
+            IloConstraint constraint;
+            constraint = IloConstraint(z[i][j] <= y[i]);
+            sprintf_s(var_name, "ct_z(%d,%d)", i, j);
+            constraint.setName(var_name);
+            model.add(constraint);
+        }
 
     //Constraints related to x and z
-    //for (int i = 0; i < data.number_customers; ++i)
-    //    for (int j = 0; j < data.number_products; ++j) {
-    //        IloConstraint constraint;
-    //        constraint = IloConstraint(data.no_purchase[i] * z[i][j] <= x[j]);
-    //        sprintf_s(var_name, "ct_xz(%d,%d)", i, j);
-    //        constraint.setName(var_name);
-    //        model.add(constraint);
-    //    }
+    for (int i = 0; i < data.number_customers; ++i)
+        for (int j = 0; j < data.number_products; ++j) {
+            IloConstraint constraint;
+            constraint = IloConstraint(data.no_purchase[i] * z[i][j] <= x[j]);
+            sprintf_s(var_name, "ct_xz(%d,%d)", i, j);
+            constraint.setName(var_name);
+            model.add(constraint);
+        }
 
     //McCornick constraints
     for (int i = 0; i < data.number_customers; ++i)
@@ -232,8 +232,8 @@ void MILPSolver::solve(Data data, int budget) {
     cplex.setParam(IloCplex::Param::MIP::Tolerances::MIPGap, 1e-8);
     IloNum run_time = time_limit - elapsed_seconds.count();
     cplex.setParam(IloCplex::TiLim, run_time);
-    cplex.setParam(IloCplex::Threads, 1);
-    cplex.exportModel("milp_ao.lp");
+    cplex.setParam(IloCplex::Threads, 4);
+    //cplex.exportModel("milp_ao.lp");
     string log_file;
     ofstream logfile(log_file);
     cplex.setOut(logfile);

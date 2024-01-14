@@ -195,13 +195,12 @@ vector<vector<double>> CuttingPlaneSolver::create_sub_intervals(Data data, int b
 }
 
 double CuttingPlaneSolver::next_approximate_point(double b, double epsilon) {
-	double x = b + 0.001;
+	double x = b + 0.0001;
 	int count = 0;
 	while (exp(b) + (exp(x) - exp(b)) / (x - b) * (log((exp(x) - exp(b)) / (x - b)) - b) - (exp(x) - exp(b)) / (x - b) <= epsilon) {
-		x += 0.001;
+		x += 0.0001;
 		count++;
 	}
-	//cout << b << " " << x << " " << count << endl;
 	return x;
 }
 
@@ -210,15 +209,15 @@ vector<vector<double>> CuttingPlaneSolver::optimal_sub_intervals(Data data, int 
 	for (int i = 0; i < data.number_customers; ++i) {
 		c[i].push_back(log(alpha[i] * data.no_purchase[i]));
 		double upper = log(alpha[i] * data.no_purchase[i] + calculate_bound_y(data, budget, i, alpha[i]));
-		double x = 0;
-		while (x <= upper) {
-			x = next_approximate_point(c[i][c[i].size() - 1], epsilon);
-			c[i].push_back(x);
+		while (true) {
+			double x = next_approximate_point(c[i][c[i].size() - 1], epsilon);
+			if (x >= upper) break;
+			else c[i].push_back(x);
 		}
 		c[i].push_back(upper);
-		//cout << c[i].size() << endl;
+		cout << c[i].size() << " ";
 	}
-
+	cout << endl;
 	return c;
 }
 
@@ -242,7 +241,7 @@ void CuttingPlaneSolver::solve(Data data, int budget) {
 
 	//create bounds c^i_k for e^{y_i}
 	//vector<vector<double>> c = create_sub_intervals(data, budget, alpha, 200);
-	vector<vector<double>> c = optimal_sub_intervals(data, budget, alpha, 0.0001);
+	vector<vector<double>> c = optimal_sub_intervals(data, budget, alpha, 0.00005);
 	vector<int> number_sub_intervals(data.number_customers);
 	for (int i = 0; i < data.number_customers; ++i)
 		number_sub_intervals[i] = c[i].size() - 1;
@@ -415,7 +414,7 @@ void CuttingPlaneSolver::solve(Data data, int budget) {
 		cplex.setParam(IloCplex::Param::MIP::Tolerances::MIPGap, 1e-4);
 		cout << "Remaining time: " << run_time << endl;
 		cplex.setParam(IloCplex::Param::TimeLimit, run_time);
-		cplex.setParam(IloCplex::Threads, 1);
+		cplex.setParam(IloCplex::Threads, 4);
 		//cplex.exportModel("cp_ao.lp");
 		string log_file;
 		ofstream logfile(log_file);
@@ -439,18 +438,16 @@ void CuttingPlaneSolver::solve(Data data, int budget) {
 				initial_z[i] = cplex.getValue(z[i]);
 			}
 
-			//initial_y = calculate_y(data, initial_x, alpha);
-			//initial_z = calculate_z(data, initial_x);
-
+			//sub_obj = calculate_original_obj(data, initial_x, alpha);
 			sub_obj = 0;
 			for (int i = 0; i < data.number_customers; ++i) {
 				sub_obj += exp(initial_y[i] + initial_z[i]);
 			}
 
-			cout << "Sub obj = " << std::setprecision(5) << fixed << sub_obj << endl;
-			cout << "Cplex obj = " << std::setprecision(5) << fixed << obj_val_cplex << endl;
+			cout << "Sub obj = " << std::setprecision(7) << fixed << sub_obj << endl;
+			cout << "Cplex obj = " << std::setprecision(7) << fixed << obj_val_cplex << endl;
 			master_obj_val = calculate_master_obj(data, initial_x);
-			cout << "Master obj = " << std::setprecision(5) << fixed << master_obj_val << endl;
+			cout << "Master obj = " << std::setprecision(7) << fixed << master_obj_val << endl;
 
 			if (master_obj_val > best_obj) {
 				best_obj = master_obj_val;
