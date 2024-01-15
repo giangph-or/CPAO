@@ -42,7 +42,7 @@ vector<int> ConicMcSolver::find_bound_y(Data data, int i, int budget) {
     IloCplex cplex(model);
     IloNum tol = cplex.getParam(IloCplex::EpInt);
     cplex.setParam(IloCplex::Param::MIP::Tolerances::MIPGap, 1e-8);
-    cplex.setParam(IloCplex::Threads, 1);
+    cplex.setParam(IloCplex::Threads, 8);
     IloNum run_time = time_limit;
     cplex.setParam(IloCplex::TiLim, run_time);
     string log_file;
@@ -213,10 +213,16 @@ void ConicMcSolver::solve(Data data, int budget) {
             }
             else {
                 IloConstraint constraint;
-                constraint = IloConstraint(z[i][j] <= y[i] - y_l[i][j] * (1 - x[j]));
-                sprintf_s(var_name, "ct_zy_l2(%d)", i);
+                constraint = IloConstraint(z[i][j] * data.no_purchase[i] <= x[j]);
+                sprintf_s(var_name, "ct_zy_u2(%d)", i);
                 constraint.setName(var_name);
                 model.add(constraint);
+
+                IloConstraint constraint_;
+                constraint_ = IloConstraint(z[i][j] <= y[i] - y_l[i][j] * (1 - x[j]));
+                sprintf_s(var_name, "ct_zy_l2(%d)", i);
+                constraint_.setName(var_name);
+                model.add(constraint_);
             }
 
     //Constraints related to x, y and z
@@ -257,11 +263,12 @@ void ConicMcSolver::solve(Data data, int budget) {
     cplex.setParam(IloCplex::Param::MIP::Tolerances::MIPGap, 1e-8);
     IloNum run_time = time_limit - elapsed_seconds.count();
     cplex.setParam(IloCplex::TiLim, run_time);
-    //cplex.setParam(IloCplex::Threads, 4);
-    //cplex.exportModel("conic_ao.lp");
-    string log_file;
-    ofstream logfile(log_file);
-    cplex.setOut(logfile);
+    cplex.setParam(IloCplex::Threads, 8);
+    cplex.setParam(IloCplex::Param::MIP::Strategy::MIQCPStrat, 2);
+    cplex.exportModel("conic_ao.lp");
+    //string log_file;
+    //ofstream logfile(log_file);
+    //cplex.setOut(logfile);
 
     double obj_value;
     vector<int> x_sol(data.number_products);

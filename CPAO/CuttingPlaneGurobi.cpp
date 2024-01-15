@@ -1,18 +1,18 @@
-#include "CuttingPlaneSolver.h"
+#include "CuttingPlaneGurobi.h"
 #include <chrono>
 #include <algorithm>
 
-CuttingPlaneSolver::CuttingPlaneSolver() {
+CuttingPlaneGurobi::CuttingPlaneGurobi() {
 
 }
 
-CuttingPlaneSolver::CuttingPlaneSolver(Data data, double time_limit, string outfile) {
+CuttingPlaneGurobi::CuttingPlaneGurobi(Data data, double time_limit, string outfile) {
 	this->data = data;
 	this->time_limit = time_limit;
 	this->out_res_csv = outfile;
 }
 
-vector<double> CuttingPlaneSolver::calculate_y(Data data, vector<int> x, vector<double> alpha) {
+vector<double> CuttingPlaneGurobi::calculate_y(Data data, vector<int> x, vector<double> alpha) {
 	vector<double> y(data.number_customers);
 	for (int i = 0; i < data.number_customers; ++i) {
 		double tmp_y = alpha[i] * data.no_purchase[i];
@@ -24,7 +24,7 @@ vector<double> CuttingPlaneSolver::calculate_y(Data data, vector<int> x, vector<
 	return y;
 }
 
-vector<double> CuttingPlaneSolver::calculate_z(Data data, vector<int> x) {
+vector<double> CuttingPlaneGurobi::calculate_z(Data data, vector<int> x) {
 	vector<double> z(data.number_customers);
 	for (int i = 0; i < data.number_customers; ++i) {
 		double tmp_z = data.no_purchase[i];
@@ -36,7 +36,7 @@ vector<double> CuttingPlaneSolver::calculate_z(Data data, vector<int> x) {
 	return z;
 }
 
-double  CuttingPlaneSolver::calculate_original_obj(Data data, vector<int> x, vector<double> alpha) {
+double  CuttingPlaneGurobi::calculate_original_obj(Data data, vector<int> x, vector<double> alpha) {
 	double obj = 0;
 	for (int i = 0; i < data.number_customers; ++i) {
 		double ts = alpha[i] * data.no_purchase[i], ms = data.no_purchase[i];
@@ -50,7 +50,7 @@ double  CuttingPlaneSolver::calculate_original_obj(Data data, vector<int> x, vec
 	return obj;
 }
 
-double CuttingPlaneSolver::calculate_master_obj(Data data, vector<int> x) {
+double CuttingPlaneGurobi::calculate_master_obj(Data data, vector<int> x) {
 	double obj = 0;
 	for (int i = 0; i < data.number_customers; ++i) {
 		double ts = 0, ms = data.no_purchase[i];
@@ -64,7 +64,7 @@ double CuttingPlaneSolver::calculate_master_obj(Data data, vector<int> x) {
 	return obj;
 }
 
-double CuttingPlaneSolver::calculate_original_obj_tmp(Data data, vector<int> x, vector<double> alpha, int candidate) {
+double CuttingPlaneGurobi::calculate_original_obj_tmp(Data data, vector<int> x, vector<double> alpha, int candidate) {
 	double obj = 0;
 	for (int i = 0; i < data.number_customers; ++i) {
 		double ts = alpha[i] * data.no_purchase[i] + (alpha[i] - data.revenue[i][candidate]) * data.utilities[i][candidate],
@@ -80,7 +80,7 @@ double CuttingPlaneSolver::calculate_original_obj_tmp(Data data, vector<int> x, 
 	return obj;
 }
 
-vector<int> CuttingPlaneSolver::greedy(Data data, int budget, vector<double> alpha) {
+vector<int> CuttingPlaneGurobi::greedy(Data data, int budget, vector<double> alpha) {
 	auto start = chrono::steady_clock::now();
 	vector<int> chosen(data.number_products, 0);
 	double obj = calculate_original_obj(data, chosen, alpha);
@@ -112,7 +112,7 @@ vector<int> CuttingPlaneSolver::greedy(Data data, int budget, vector<double> alp
 
 	cout << "Greedy solution: " << endl;
 	for (int j = 0; j < data.number_products; j++)
-		if(chosen[j] == 1)
+		if (chosen[j] == 1)
 			cout << j << " ";
 	cout << endl;
 	cout << "Sub obj = " << obj << endl;
@@ -125,7 +125,7 @@ vector<int> CuttingPlaneSolver::greedy(Data data, int budget, vector<double> alp
 	return chosen;
 }
 
-double CuttingPlaneSolver::calculate_bound_y(Data data, int budget, int i, double alpha) {
+double CuttingPlaneGurobi::calculate_bound_y(Data data, int budget, int i, double alpha) {
 	double sum = 0;
 	vector<double> u(data.number_products);
 	for (int j = 0; j < data.number_products; ++j)
@@ -139,47 +139,34 @@ double CuttingPlaneSolver::calculate_bound_y(Data data, int budget, int i, doubl
 	return sum;
 }
 
-double CuttingPlaneSolver::calculate_optimal_bound_y(Data data, int budget, int i, double alpha) {
-	IloEnv env;
-	IloModel model(env);
+double CuttingPlaneGurobi::calculate_optimal_bound_y(Data data, int budget, int i, double alpha) {
+	GRBEnv env = GRBEnv(true);
+	env.start();
+
+	GRBModel model = GRBModel(env);
 
 	//Decison variables: x_j = 1 if product j is chosen, 0 otherwise
-	IloIntVarArray x(env, data.number_products);
-	for (int j = 0; j < data.number_products; ++j) {
-		sprintf_s(var_name, "x(%d)", j);
-		x[j] = IloIntVar(env, 0, 1, var_name);
-	}
+	GRBVar* x = 0;
+	x = model.addVars(data.number_products, GRB_BINARY);
 
 	//Budget constraint
-	IloExpr capacity(env);
+	GRBLinExpr capacity = 0;
 	for (int j = 0; j < data.number_products; ++j) {
 		capacity += x[j];
 	}
-	IloConstraint constraint;
-	constraint = IloConstraint(capacity <= budget);
-	sprintf_s(var_name, "ct_budget");
-	constraint.setName(var_name);
-	model.add(constraint);
+	model.addConstr(capacity <= budget);
 
-	IloExpr obj(env);
+	GRBLinExpr obj;
 	for (int j = 0; j < data.number_products; ++j)
 		obj += data.utilities[i][j] * x[j] * (alpha - data.revenue[i][j]);
-	model.add(IloMaximize(env, obj));
+	model.setObjective(obj, GRB_MAXIMIZE);
 
-	IloCplex cplex(model);
-	IloNum tol = cplex.getParam(IloCplex::EpInt);
-	cplex.setParam(IloCplex::Param::MIP::Tolerances::MIPGap, 1e-8);
-	cplex.setParam(IloCplex::Threads, 1);
-	IloNum run_time = time_limit;
-	cplex.setParam(IloCplex::TiLim, run_time);
-	string log_file;
-	ofstream logfile(log_file);
-	cplex.setOut(logfile);
+	model.optimize();
 
-	return cplex.getObjValue();
+	return model.get(GRB_DoubleAttr_ObjVal);
 }
 
-vector<vector<double>> CuttingPlaneSolver::create_sub_intervals(Data data, int budget, vector<double> alpha, int number_itervals) {
+vector<vector<double>> CuttingPlaneGurobi::create_sub_intervals(Data data, int budget, vector<double> alpha, int number_itervals) {
 	vector<vector<double>> c(data.number_customers);
 	for (int i = 0; i < data.number_customers; ++i)
 		c[i].resize(number_itervals + 1, 0);
@@ -194,7 +181,7 @@ vector<vector<double>> CuttingPlaneSolver::create_sub_intervals(Data data, int b
 	return c;
 }
 
-double CuttingPlaneSolver::next_approximate_point(double b, double epsilon) {
+double CuttingPlaneGurobi::next_approximate_point(double b, double epsilon) {
 	double x = b + 0.0001;
 	int count = 0;
 	while (exp(b) + (exp(x) - exp(b)) / (x - b) * (log((exp(x) - exp(b)) / (x - b)) - b) - (exp(x) - exp(b)) / (x - b) <= epsilon) {
@@ -204,7 +191,7 @@ double CuttingPlaneSolver::next_approximate_point(double b, double epsilon) {
 	return x;
 }
 
-vector<vector<double>> CuttingPlaneSolver::optimal_sub_intervals(Data data, int budget, vector<double> alpha, double epsilon) {
+vector<vector<double>> CuttingPlaneGurobi::optimal_sub_intervals(Data data, int budget, vector<double> alpha, double epsilon) {
 	vector<vector<double>> c(data.number_customers);
 	for (int i = 0; i < data.number_customers; ++i) {
 		c[i].push_back(log(alpha[i] * data.no_purchase[i]));
@@ -221,7 +208,7 @@ vector<vector<double>> CuttingPlaneSolver::optimal_sub_intervals(Data data, int 
 	return c;
 }
 
-void CuttingPlaneSolver::solve(Data data, int budget) {
+void CuttingPlaneGurobi::solve(Data data, int budget) {
 	auto start = chrono::steady_clock::now(); //get start time
 
 	vector<double> alpha(data.number_customers, -1);
@@ -241,142 +228,100 @@ void CuttingPlaneSolver::solve(Data data, int budget) {
 
 	//create bounds c^i_k for e^{y_i}
 	//vector<vector<double>> c = create_sub_intervals(data, budget, alpha, 200);
-	vector<vector<double>> c = optimal_sub_intervals(data, budget, alpha, 0.00001);
+	vector<vector<double>> c = optimal_sub_intervals(data, budget, alpha, 0.00005);
 	vector<int> number_sub_intervals(data.number_customers);
 	for (int i = 0; i < data.number_customers; ++i)
 		number_sub_intervals[i] = c[i].size() - 1;
 
-	//ILOSTLBEGIN
-	IloEnv env;
-	IloModel model(env);
+	GRBEnv env = GRBEnv(true);
+	env.set("LogFile", "conic_ao.log");
+	env.start();
 
-	//Decison variables: x_j = 1 if product j is chosen, 0 otherwise
-	IloIntVarArray x(env, data.number_products);
-	for (int j = 0; j < data.number_products; ++j) {
-		sprintf_s(var_name, "x(%d)", j);
-		x[j] = IloIntVar(env, 0, 1, var_name);
-	}
+	GRBModel model = GRBModel(env);
 
-	//Slack variables: y_i
-	IloNumVarArray y(env, data.number_customers);
-	for (int i = 0; i < data.number_customers; ++i) {
-		sprintf_s(var_name, "y(%d)", i);
-		y[i] = IloNumVar(env, -INFINITY, INFINITY, var_name);
-	}
+	//cout << "Decison variables : x_j\n" << endl;
+	GRBVar* x = 0;
+	x = model.addVars(data.number_products, GRB_BINARY);
 
-	//Slack variables: z_i
-	IloNumVarArray z(env, data.number_customers);
-	for (int i = 0; i < data.number_customers; ++i) {
-		sprintf_s(var_name, "z(%d)", i);
-		z[i] = IloNumVar(env, -INFINITY, INFINITY, var_name);
-	}
+	//cout << "Slack variables : y_i\n" << endl;
+	GRBVar* y = 0;
+	y = model.addVars(data.number_customers, GRB_CONTINUOUS);
 
-	//Decision variables: r_{ik}
-	IloArray<IloIntVarArray> r(env, data.number_customers);
-	for (int i = 0; i < data.number_customers; ++i) {
-		r[i] = IloIntVarArray(env, number_sub_intervals[i]);
-		for (int k = 0; k < number_sub_intervals[i]; ++k) {
-			sprintf_s(var_name, "r(%d,%d)", i, k);
-			r[i][k] = IloIntVar(env, 0, 1, var_name);
-		}
-	}
+	//cout << "Slack variables : z_i\n" << endl;
+	GRBVar* z = 0;
+	z = model.addVars(data.number_customers, GRB_CONTINUOUS);
 
-	//Decision variables: s_{ik}
-	IloArray<IloNumVarArray> s(env, data.number_customers);
-	for (int i = 0; i < data.number_customers; ++i) {
-		s[i] = IloNumVarArray(env, number_sub_intervals[i]);
-		for (int k = 0; k < number_sub_intervals[i]; ++k) {
-			sprintf_s(var_name, "s(%d,%d)", i, k);
-			s[i][k] = IloNumVar(env, 0, 1, var_name);
-		}
-	}
+	//cout << "Decision variables: r_{ik}\n" << endl;
+	GRBVar** r = 0;
+	r = new GRBVar * [data.number_customers];
+	for (int i = 0; i < data.number_customers; ++i)
+		r[i] = model.addVars(number_sub_intervals[i], GRB_BINARY);
 
-	//Slack variable: theta_i
-	IloNumVarArray theta(env, data.number_customers);
-	for (int i = 0; i < data.number_customers; ++i) {
-		sprintf_s(var_name, "theta(%d)", i);
-		theta[i] = IloNumVar(env, -INFINITY, INFINITY, var_name);
-	}
+	//cout << "Decision variables: s_{ik}\n" << endl;
+	GRBVar** s = 0;
+	s = new GRBVar * [data.number_customers];
+	for (int i = 0; i < data.number_customers; ++i)
+		s[i] = new GRBVar[number_sub_intervals[i]];
+	for (int i = 0; i < data.number_customers; ++i)
+		for (int k = 0; k < number_sub_intervals[i]; ++k)
+			s[i][k] = model.addVar(0.0, 1.0, 0.0, GRB_CONTINUOUS);
+
+	//cout << "Slack variables : theta_i\n" << endl;
+	GRBVar* theta = 0;
+	theta = model.addVars(data.number_customers, GRB_CONTINUOUS);
 
 	//Constraints related to e^{y_i}
 	//exp(c[i][0]) = alpha * no_purchase[i] => remove form both sides
 	for (int i = 0; i < data.number_customers; ++i) {
-		IloExpr sum_r(env), sum_x(env);
+		GRBLinExpr sum_r = 0, sum_x = 0;
 		for (int k = 0; k < number_sub_intervals[i]; ++k) {
 			sum_r += (exp(c[i][k + 1]) - exp(c[i][k])) * r[i][k];
 		}
 		for (int j = 0; j < data.number_products; ++j)
 			sum_x += (alpha[i] - data.revenue[i][j]) * x[j] * data.utilities[i][j];
 
-		IloConstraint constraint;
-		constraint = IloConstraint(sum_r >= sum_x);
-		sprintf_s(var_name, "ct_e(%d)", i);
-		constraint.setName(var_name);
-		model.add(constraint);
+		model.addConstr(sum_r >= sum_x);
 	}
 
 	//Constraints related to y_i
 	for (int i = 0; i < data.number_customers; ++i) {
-		IloExpr sum_r(env);
+		GRBLinExpr sum_r = 0;
 		for (int k = 0; k < number_sub_intervals[i]; ++k) {
 			sum_r += (c[i][k + 1] - c[i][k]) * r[i][k];
 		}
 
-		IloConstraint constraint;
-		constraint = IloConstraint(y[i] == c[i][0] + sum_r);
-		sprintf_s(var_name, "ct_y(%d)", i);
-		constraint.setName(var_name);
-		model.add(constraint);
+		model.addConstr(y[i] == c[i][0] + sum_r);
 	}
 
 	//Constraints related to s_{ik} and r_{ik}
 	for (int i = 0; i < data.number_customers; ++i) {
 		for (int k = 0; k < number_sub_intervals[i]; ++k) {
-			IloConstraint constraint_rs;
-			constraint_rs = IloConstraint(r[i][k] >= s[i][k]);
-			sprintf_s(var_name, "ct_rs(%d,%d)", i, k);
-			constraint_rs.setName(var_name);
-			model.add(constraint_rs);
+			model.addConstr(r[i][k] >= s[i][k]);
 
 			if (k < number_sub_intervals[i] - 1) {
-				IloConstraint constraint_s;
-				constraint_s = IloConstraint(s[i][k] >= s[i][k + 1]);
-				sprintf_s(var_name, "ct_s(%d,%d)", i, k);
-				constraint_s.setName(var_name);
-				model.add(constraint_s);
-
-				IloConstraint constraint_sr;
-				constraint_sr = IloConstraint(s[i][k] >= r[i][k + 1]);
-				sprintf_s(var_name, "ct_sr(%d,%d)", i, k);
-				constraint_sr.setName(var_name);
-				model.add(constraint_sr);
+				model.addConstr(s[i][k] >= s[i][k + 1]);
+				model.addConstr(s[i][k] >= r[i][k + 1]);
 			}
 		}
 	}
 
 	//Budget constraint
-	IloExpr capacity(env);
+	GRBLinExpr capacity = 0;
 	for (int j = 0; j < data.number_products; ++j) {
 		capacity += x[j];
 	}
-	IloConstraint constraint;
-	constraint = IloConstraint(capacity <= budget);
-	sprintf_s(var_name, "ct_budget");
-	constraint.setName(var_name);
-	model.add(constraint);
+	model.addConstr(capacity <= budget);
 
 	//Objective
-	IloExpr obj(env);
+	GRBLinExpr obj = 0;
 	for (int i = 0; i < data.number_customers; ++i)
 		obj += theta[i];
-	model.add(IloMinimize(env, obj));
+	model.setObjective(obj, GRB_MINIMIZE);
 
 	auto time_before_cut = chrono::steady_clock::now();
 	chrono::duration<double> before_cut = time_before_cut - start;
 
-	IloCplex cplex(model);
-	
-	IloNum run_time = time_limit - before_cut.count();
+	double run_time = time_limit - before_cut.count();
 
 	int num_iterative = 0;
 	double stop_param = 1e-5;
@@ -387,46 +332,35 @@ void CuttingPlaneSolver::solve(Data data, int budget) {
 	while (sub_obj > stop_param + obj_val_cplex) {
 
 		//compute gradient e^{y+z} at initial_x, initial_y, initial_z and set up constraints related to theta
-		for (int i = 0; i < data.number_customers; ++i) {
-			IloConstraint constraint;
-			constraint = IloConstraint(theta[i] >= exp(initial_y[i] + initial_z[i]) * (1 + y[i] - initial_y[i] + z[i] - initial_z[i]));
-			sprintf_s(var_name, "ct_theta(%d)", i);
-			constraint.setName(var_name);
-			model.add(constraint);
-		}
+		for (int i = 0; i < data.number_customers; ++i)
+			model.addConstr(theta[i] >= exp(initial_y[i] + initial_z[i]) * (1 + y[i] - initial_y[i] + z[i] - initial_z[i]));
 
 		//compute gradient e^{-z} at initial_x, initial_y, initial_z and set up constraints related to e^{-z}
 		for (int i = 0; i < data.number_customers; ++i) {
-			IloExpr sum(env);
+			GRBLinExpr sum = 0;
 			for (int j = 0; j < data.number_products; ++j)
 				sum += x[j] * data.utilities[i][j];
 			sum += data.no_purchase[i];
-			IloConstraint constraint;
-			constraint = IloConstraint(exp(-initial_z[i]) * (1 - z[i] + initial_z[i]) <= sum);
-			sprintf_s(var_name, "ct_ez(%d)", i);
-			constraint.setName(var_name);
-			model.add(constraint);
+			model.addConstr(exp(-initial_z[i]) * (1 - z[i] + initial_z[i]) <= sum);
 		}
 
 		//solve
 		num_iterative++;
-		IloNum tol = cplex.getParam(IloCplex::EpInt);
-		cplex.setParam(IloCplex::Param::MIP::Tolerances::MIPGap, 1e-5);
 		cout << "Remaining time: " << run_time << endl;
-		cplex.setParam(IloCplex::Param::TimeLimit, run_time);
-		cplex.setParam(IloCplex::Threads, 8);
-		cplex.exportModel("cp_ao.lp");
-		string log_file;
-		ofstream logfile(log_file);
-		cplex.setOut(logfile);
 
-		if (cplex.solve()) {
+		model.write("cutting_plane.lp");
+		model.set(GRB_DoubleParam_TimeLimit, run_time);
+		//model.set(GRB_INT_PAR_OUTPUTFLAG, 0);
+		
+		model.optimize();
+
+		if (model.get(GRB_IntAttr_SolCount) > 0) {
 			cout << "\nIteration " << num_iterative << endl;
 			//update obj, variables
-			obj_val_cplex = cplex.getObjValue();
+			obj_val_cplex = model.get(GRB_DoubleAttr_ObjVal);
 			cout << "\nResult product list: " << endl;
 			for (int j = 0; j < data.number_products; ++j)
-				if (cplex.getValue(x[j]) > 1 - tol) {
+				if (x[j].get(GRB_DoubleAttr_X) > 0.5) {
 					initial_x[j] = 1;
 					cout << j << " ";
 				}
@@ -434,8 +368,9 @@ void CuttingPlaneSolver::solve(Data data, int budget) {
 			cout << endl;
 
 			for (int i = 0; i < data.number_customers; ++i) {
-				initial_y[i] = cplex.getValue(y[i]);
-				initial_z[i] = cplex.getValue(z[i]);
+				initial_y[i] = y[i].get(GRB_DoubleAttr_X);
+				initial_z[i] = z[i].get(GRB_DoubleAttr_X);
+				//cout << initial_y[i] << " " << initial_z[i] << endl;
 			}
 
 			//sub_obj = calculate_original_obj(data, initial_x, alpha);
@@ -472,7 +407,7 @@ void CuttingPlaneSolver::solve(Data data, int budget) {
 		}
 	}
 	auto end = chrono::steady_clock::now();
-	chrono::duration<double> total_time= end - start;
+	chrono::duration<double> total_time = end - start;
 	time_for_solve = total_time.count();
 
 	cout << "\nObjective value: " << setprecision(5) << best_obj << endl;
@@ -489,5 +424,4 @@ void CuttingPlaneSolver::solve(Data data, int budget) {
 		if (best_x[j] == 1)
 			report_results << j << " ";
 	report_results.close();
-	env.end();
 }
