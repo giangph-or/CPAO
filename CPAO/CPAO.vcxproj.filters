@@ -39,6 +39,9 @@
     <ClCompile Include="CuttingPlaneGurobi.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="MILPGurobi.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ProblemReader.h">
@@ -60,6 +63,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="CuttingPlaneGurobi.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MILPGurobi.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

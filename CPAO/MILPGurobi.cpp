@@ -1,18 +1,18 @@
-#include "ConicMcGurobi.h"
+#include "MILPGurobi.h"
 #include <chrono>
 #include <algorithm>
 
-ConicMcGurobi::ConicMcGurobi() {
+MILPGurobi::MILPGurobi() {
 
 }
 
-ConicMcGurobi::ConicMcGurobi(Data data, double time_limit, string outfile) {
+MILPGurobi::MILPGurobi(Data data, double time_limit, string outfile) {
     this->data = data;
     this->time_limit = time_limit;
     this->out_res_csv = outfile;
 }
 
-vector<int> ConicMcGurobi::find_bound_y(Data data, int i, int budget) {
+vector<int> MILPGurobi::find_bound_y(Data data, int i, int budget) {
     GRBEnv env = GRBEnv(true);
     env.start();
 
@@ -50,7 +50,7 @@ vector<int> ConicMcGurobi::find_bound_y(Data data, int i, int budget) {
     return x_sol;
 }
 
-double ConicMcGurobi::calculate_sum_utility(Data data, int budget, int i, int w) {
+double MILPGurobi::calculate_sum_utility(Data data, int budget, int i, int w) {
     vector<pair<double, int>> u(data.number_products);
     for (int j = 0; j < data.number_products; ++j) {
         u[j].first = data.utilities[i][j];
@@ -69,7 +69,7 @@ double ConicMcGurobi::calculate_sum_utility(Data data, int budget, int i, int w)
     return sum;
 }
 
-double  ConicMcGurobi::calculate_master_obj(Data data, vector<int> x) {
+double MILPGurobi::calculate_master_obj(Data data, vector<int> x) {
     double obj = 0;
     for (int i = 0; i < data.number_customers; ++i) {
         double ts = 0, ms = data.no_purchase[i];
@@ -82,14 +82,8 @@ double  ConicMcGurobi::calculate_master_obj(Data data, vector<int> x) {
     return obj;
 }
 
-void ConicMcGurobi::solve(Data data, int budget) {
+void MILPGurobi::solve(Data data, int budget) {
     auto start = chrono::steady_clock::now(); //get start time
-
-    vector<double> alpha(data.number_customers, -1);
-    for (int i = 0; i < data.number_customers; ++i)
-        for (int j = 0; j < data.number_products; ++j)
-            if (data.revenue[i][j] > alpha[i])
-                alpha[i] = data.revenue[i][j];
 
     vector<vector<int>> bound(data.number_customers);
     for (int i = 0; i < data.number_customers; ++i)
@@ -100,13 +94,15 @@ void ConicMcGurobi::solve(Data data, int budget) {
         y_l[i].resize(data.number_products);
     for (int i = 0; i < data.number_customers; ++i)
         for (int j = 0; j < data.number_products; ++j)
-            if (bound[i][j] == 1)
+            if (bound[i][j] == 1) {
                 y_l[i][j] = 1.0 / (data.no_purchase[i] + data.utilities[i][j] + calculate_sum_utility(data, budget - 1, i, j));
-            else
+            }
+            else {
                 y_l[i][j] = 1.0 / (data.no_purchase[i] + calculate_sum_utility(data, budget, i, j));
+            }
 
     GRBEnv env = GRBEnv(true);
-    env.set("LogFile", "conic_ao.log");
+    env.set("LogFile", "milp_ao.log");
     env.start();
 
     GRBModel model = GRBModel(env);
@@ -125,44 +121,36 @@ void ConicMcGurobi::solve(Data data, int budget) {
 
     //cout << "Slack variables: z_{ij}\n" << endl;
     GRBVar** z;
-    z = new GRBVar* [data.number_customers];
+    z = new GRBVar * [data.number_customers];
     for (int i = 0; i < data.number_customers; ++i)
         z[i] = new GRBVar[data.number_products];
     for (int i = 0; i < data.number_customers; ++i)
         for (int j = 0; j < data.number_products; ++j)
             z[i][j] = model.addVar(0, GRB_INFINITY, 0, GRB_CONTINUOUS, "z_" + to_string(i) + "_" + to_string(j));
 
-    //cout << "Slack variables: w_i\n" << endl;
-    GRBVar* w = 0;
-    w = new GRBVar[data.number_customers];
-    for (int i = 0; i < data.number_customers; ++i)
-        w[i] = model.addVar(0, GRB_INFINITY, 0, GRB_CONTINUOUS, "w_" + to_string(i));
-
-    //cout << "Constraints related to w and x\n" << endl;
-    for (int i = 0; i < data.number_customers; ++i) {
-        GRBLinExpr sum_x;
-        for (int j = 0; j < data.number_products; ++j)
-            sum_x += x[j] * data.utilities[i][j];
-        model.addConstr(sum_x + data.no_purchase[i] == w[i]);
-    }
-
-    //cout << "Constraints related to x, w and z\n" << endl;
-    for (int i = 0; i < data.number_customers; ++i)
-        for (int j = 0; j < data.number_products; ++j)
-            model.addQConstr(z[i][j] * w[i] >= x[j] * x[j]);
-
-    //cout << "Constraints related to y and w\n" << endl;
-    for (int i = 0; i < data.number_customers; ++i)
-        model.addQConstr(y[i] * w[i] >= 1);
-
-    //cout << "Constraints related to y and z\n" << endl;
+    //Constraints related to y and z
     for (int i = 0; i < data.number_customers; ++i) {
         GRBLinExpr sum_z;
         for (int j = 0; j < data.number_products; ++j)
-            sum_z += data.utilities[i][j] * z[i][j];
+            sum_z += z[i][j] * data.utilities[i][j];
 
-        model.addConstr(data.no_purchase[i] * y[i] + sum_z >= 1);
+        model.addConstr(sum_z + y[i] * data.no_purchase[i] == 1);
     }
+
+    //Constraints related to x, y and z
+    for (int i = 0; i < data.number_customers; ++i)
+        for (int j = 0; j < data.number_products; ++j)
+            model.addConstr(data.no_purchase[i] * (y[i] - z[i][j]) <= 1 - x[j]);
+
+    //Bound z
+    for (int i = 0; i < data.number_customers; ++i)
+        for (int j = 0; j < data.number_products; ++j)
+            model.addConstr(z[i][j] <= y[i]);
+
+    //Constraints related to x and z
+    for (int i = 0; i < data.number_customers; ++i)
+        for (int j = 0; j < data.number_products; ++j)
+            model.addConstr(data.no_purchase[i] * z[i][j] <= x[j]);  
 
     //McCornick constraints
     for (int i = 0; i < data.number_customers; ++i)
@@ -173,48 +161,39 @@ void ConicMcGurobi::solve(Data data, int budget) {
             }
             else model.addConstr(z[i][j] <= y[i] - y_l[i][j] * (1 - x[j]));
 
-    //Constraints related to x, y and z
-    for (int i = 0; i < data.number_customers; ++i)
-        for (int j = 0; j < data.number_products; ++j)
-            model.addConstr(data.no_purchase[i] * (y[i] - z[i][j]) <= 1 - x[j]);
-
-    //cout << "Budget constraint\n" << endl;
+    //Budget constraint
     GRBLinExpr capacity;
     for (int j = 0; j < data.number_products; ++j) {
         capacity += x[j];
     }
     model.addConstr(capacity <= budget);
 
-    //cout << "Objective\n" << endl;
+    //Objective
     GRBLinExpr obj;
-    for (int i = 0; i < data.number_customers; ++i) {
-        obj += alpha[i] * data.no_purchase[i] * y[i];
+    for (int i = 0; i < data.number_customers; ++i)
         for (int j = 0; j < data.number_products; ++j)
-            obj += (alpha[i] - data.revenue[i][j]) * z[i][j] * data.utilities[i][j];
-    }
-    model.setObjective(obj, GRB_MINIMIZE);
+            obj += data.revenue[i][j] * z[i][j] * data.utilities[i][j];
+    model.setObjective(obj, GRB_MAXIMIZE);
 
     auto time_now = chrono::steady_clock::now();
     chrono::duration<double> elapsed_seconds = time_now - start;
 
+    double run_time = time_limit - elapsed_seconds.count();
+    
+    model.write("milp.lp");
     model.set(GRB_DoubleParam_TimeLimit, time_limit - elapsed_seconds.count());
-    model.set(GRB_IntParam_MIQCPMethod, 1);
-    model.write("conic.lp");
     //model.set(GRB_INT_PAR_OUTPUTFLAG, 0);
 
     model.optimize();
 
-    double obj_value;
     vector<int> x_sol(data.number_products);
-    vector<double> y_sol(data.number_customers);
-    vector<vector<double>> z_sol(data.number_customers);
-    for (int i = 0; i < data.number_customers; ++i)
-        z_sol[i].resize(data.number_products);
-
-    double master_obj = 0;
+    //vector<double> y_sol(data.number_customers);
+    //vector<vector<double>> z_sol(data.number_customers);
+    //for (int i = 0; i < data.number_customers; ++i)
+    //    z_sol[i].resize(data.number_products);
 
     if (model.get(GRB_IntAttr_SolCount) != 0) {
-        obj_value = model.get(GRB_DoubleAttr_ObjVal);
+        obj_val = model.get(GRB_DoubleAttr_ObjVal);
         cout << "\nResult product list: " << endl;
         for (int j = 0; j < data.number_products; ++j)
             if (x[j].get(GRB_DoubleAttr_X) > 0.5) {
@@ -224,20 +203,18 @@ void ConicMcGurobi::solve(Data data, int budget) {
             else x_sol[j] = 0;
         cout << endl;
 
-        for (int i = 0; i < data.number_customers; ++i) {
-            y_sol[i] = y[i].get(GRB_DoubleAttr_X);
-            for (int j = 0; j < data.number_products; ++j)
-                z_sol[i][j] = z[i][j].get(GRB_DoubleAttr_X);
-        }
+        //for (int i = 0; i < data.number_customers; ++i) {
+        //    y_sol[i] = y[i].get(GRB_DoubleAttr_X);
+        //    for (int j = 0; j < data.number_products; ++j)
+        //        z_sol[i][j] = z[i][j].get(GRB_DoubleAttr_X);
+        //}
 
-        cout << "Conic obj = " << std::setprecision(5) << fixed << obj_value << endl;
-        master_obj = calculate_master_obj(data, x_sol);
-        cout << "Master obj = " << std::setprecision(5) << fixed << master_obj << endl;
+        cout << "MILP obj = " << std::setprecision(5) << fixed << obj_val << endl;
 
         //check time
         auto time_now = std::chrono::steady_clock::now(); //get now time
         std::chrono::duration<double> total_time = time_now - start;
-        cout << "Time now: " << total_time.count() << endl;
+        cout << "time now: " << total_time.count() << endl;
         cout << "--- --- --- --- --- --- ---" << endl;
     }
     else {
@@ -253,7 +230,7 @@ void ConicMcGurobi::solve(Data data, int budget) {
 
     ofstream report_results(out_res_csv, ofstream::out);
     report_results.precision(10);
-    report_results << master_obj << " " << time_for_solve << endl;
+    report_results << obj_val << " " << time_for_solve << endl;
     for (int j = 0; j < data.number_products; ++j)
         if (x_sol[j] == 1)
             report_results << j << " ";

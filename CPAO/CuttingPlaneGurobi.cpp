@@ -231,7 +231,7 @@ void CuttingPlaneGurobi::solve(Data data, int budget) {
 
 	//create bounds c^i_k for e^{y_i}
 	//vector<vector<double>> c = create_sub_intervals(data, budget, alpha, 200);
-	vector<vector<double>> c = optimal_sub_intervals(data, budget, alpha, 0.0001);
+	vector<vector<double>> c = optimal_sub_intervals(data, budget, alpha, 0.00005);
 	vector<int> number_sub_intervals(data.number_customers);
 	for (int i = 0; i < data.number_customers; ++i)
 		number_sub_intervals[i] = c[i].size() - 1;
@@ -338,7 +338,7 @@ void CuttingPlaneGurobi::solve(Data data, int budget) {
 	double run_time = time_limit - before_cut.count();
 
 	int num_iterative = 0;
-	double stop_param = 1e-5;
+	double stop_param = 1e-4;
 	double sub_obj = 1.0;
 	double obj_val_cplex = 0.0;
 
@@ -364,6 +364,8 @@ void CuttingPlaneGurobi::solve(Data data, int budget) {
 
 		model.write("cutting_plane.lp");
 		model.set(GRB_DoubleParam_TimeLimit, run_time);
+		model.set(GRB_IntParam_MIPFocus, 3);
+		//model.set(GRB_IntParam_MIPFocus, 1);
 		
 		model.optimize();
 

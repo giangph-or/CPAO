@@ -3,6 +3,7 @@
 #include "CuttingPlaneSolver.h"
 #include "CuttingPlaneGurobi.h"
 #include "MILPSolver.h"
+#include "MILPGurobi.h"
 #include "ConicMcSolver.h"
 #include "ConicMcGurobi.h"
 #include <string>
@@ -29,8 +30,11 @@ int main(int argc, char* argv[]) {
         cpoa.solve(data, stoi(budget));
     }
     if (model == "MILP") {
-        string out_file = "AO_result_milp//" + instance_name + "_" + no_pay + "_" + budget + ".txt";
-        MILPSolver milpoa(data, time_limit, out_file);
+        //string out_file = "AO_result_milp//" + instance_name + "_" + no_pay + "_" + budget + ".txt";
+        //MILPSolver milpoa(data, time_limit, out_file);
+        //milpoa.solve(data, stoi(budget));
+        string out_file = "AO_result_milp_gurobi//" + instance_name + "_" + no_pay + "_" + budget + ".txt";
+        MILPGurobi milpoa(data, time_limit, out_file);
         milpoa.solve(data, stoi(budget));
     }
     if (model == "Conic") {
