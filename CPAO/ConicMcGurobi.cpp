@@ -19,11 +19,13 @@ vector<int> ConicMcGurobi::find_bound_y(Data data, int i, int budget) {
     GRBModel model = GRBModel(env);
 
     //Decison variables: x_j = 1 if product j is chosen, 0 otherwise
-    GRBVar* x = 0;
-    x = model.addVars(data.number_products, GRB_BINARY);
+    GRBVar* x;
+    x = new GRBVar[data.number_products];
+    for (int j = 0; j < data.number_products; ++j)
+        x[j] = model.addVar(0, 1, 0, GRB_BINARY, "x_" + to_string(j));
 
     //Budget constraint
-    GRBLinExpr capacity = 0;
+    GRBLinExpr capacity;
     for (int j = 0; j < data.number_products; ++j) {
         capacity += x[j];
     }
@@ -38,11 +40,10 @@ vector<int> ConicMcGurobi::find_bound_y(Data data, int i, int budget) {
     model.optimize();
 
     vector<int> x_sol(data.number_products);
-    double tol = 0.01;
 
     if (model.get(GRB_IntAttr_SolCount) != 0) {
         for (int j = 0; j < data.number_products; ++j)
-            if (x[j].get(GRB_DoubleAttr_X) > 1 - tol)
+            if (x[j].get(GRB_DoubleAttr_X) > 0.5)
                 x_sol[j] = 1;
             else
                 x_sol[j] = 0;
@@ -112,26 +113,35 @@ void ConicMcGurobi::solve(Data data, int budget) {
     GRBModel model = GRBModel(env);
 
     //cout << "Decison variables : x_j\n" << endl;
-    GRBVar* x = 0;
-    x = model.addVars(data.number_products, GRB_BINARY);
+    GRBVar* x;
+    x = new GRBVar[data.number_products];
+    for (int j = 0; j < data.number_products; ++j)
+        x[j] = model.addVar(0, 1, 0, GRB_BINARY, "x_" + to_string(j));
 
     //cout << "Slack variables : y_i\n" << endl;
-    GRBVar* y = 0;
-    y = model.addVars(data.number_customers, GRB_CONTINUOUS);
+    GRBVar* y;
+    y = new GRBVar[data.number_customers];
+    for (int i = 0; i < data.number_customers; ++i)
+        y[i] = model.addVar(0, GRB_INFINITY, 0, GRB_CONTINUOUS, "y_" + to_string(i));
 
     //cout << "Slack variables: z_{ij}\n" << endl;
-    GRBVar** z = 0;
+    GRBVar** z;
     z = new GRBVar* [data.number_customers];
     for (int i = 0; i < data.number_customers; ++i)
-        z[i] = model.addVars(data.number_products, GRB_CONTINUOUS);
+        z[i] = new GRBVar[data.number_products];
+    for (int i = 0; i < data.number_customers; ++i)
+        for (int j = 0; j < data.number_products; ++j)
+            z[i][j] = model.addVar(0, GRB_INFINITY, 0, GRB_CONTINUOUS, "z_" + to_string(i) + "_" + to_string(j));
 
     //cout << "Slack variables: w_i\n" << endl;
     GRBVar* w = 0;
-    w = model.addVars(data.number_customers, GRB_CONTINUOUS);
+    w = new GRBVar[data.number_customers];
+    for (int i = 0; i < data.number_customers; ++i)
+        w[i] = model.addVar(0, GRB_INFINITY, 0, GRB_CONTINUOUS, "w_" + to_string(i));
 
     //cout << "Constraints related to w and x\n" << endl;
     for (int i = 0; i < data.number_customers; ++i) {
-        GRBLinExpr sum_x = 0;
+        GRBLinExpr sum_x;
         for (int j = 0; j < data.number_products; ++j)
             sum_x += x[j] * data.utilities[i][j];
         model.addConstr(sum_x + data.no_purchase[i] == w[i]);

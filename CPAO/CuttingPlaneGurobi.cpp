@@ -1,6 +1,9 @@
 #include "CuttingPlaneGurobi.h"
 #include <chrono>
 #include <algorithm>
+#include <sstream>
+#include <cstdlib>
+#include <cassert>
 
 CuttingPlaneGurobi::CuttingPlaneGurobi() {
 
@@ -228,7 +231,7 @@ void CuttingPlaneGurobi::solve(Data data, int budget) {
 
 	//create bounds c^i_k for e^{y_i}
 	//vector<vector<double>> c = create_sub_intervals(data, budget, alpha, 200);
-	vector<vector<double>> c = optimal_sub_intervals(data, budget, alpha, 0.00005);
+	vector<vector<double>> c = optimal_sub_intervals(data, budget, alpha, 0.0001);
 	vector<int> number_sub_intervals(data.number_customers);
 	for (int i = 0; i < data.number_customers; ++i)
 		number_sub_intervals[i] = c[i].size() - 1;
@@ -240,80 +243,91 @@ void CuttingPlaneGurobi::solve(Data data, int budget) {
 	GRBModel model = GRBModel(env);
 
 	//cout << "Decison variables : x_j\n" << endl;
-	GRBVar* x = 0;
-	x = model.addVars(data.number_products, GRB_BINARY);
+	GRBVar* x;
+	x = new GRBVar[data.number_products];
+	for (int j = 0; j < data.number_products; ++j)
+		x[j] = model.addVar(0, 1, 0, GRB_BINARY, "x_" + to_string(j));
 
 	//cout << "Slack variables : y_i\n" << endl;
-	GRBVar* y = 0;
-	y = model.addVars(data.number_customers, GRB_CONTINUOUS);
+	GRBVar* y;
+	y = new GRBVar[data.number_customers];
+	for (int i = 0; i < data.number_customers; ++i)
+		y[i] = model.addVar(-GRB_INFINITY, GRB_INFINITY, 0, GRB_CONTINUOUS, "y_" + to_string(i));
 
 	//cout << "Slack variables : z_i\n" << endl;
-	GRBVar* z = 0;
-	z = model.addVars(data.number_customers, GRB_CONTINUOUS);
+	GRBVar* z;
+	z = new GRBVar[data.number_customers];
+	for (int i = 0; i < data.number_customers; ++i)
+		z[i] = model.addVar(-GRB_INFINITY, GRB_INFINITY, 0, GRB_CONTINUOUS, "z_" + to_string(i));
 
 	//cout << "Decision variables: r_{ik}\n" << endl;
-	GRBVar** r = 0;
-	r = new GRBVar * [data.number_customers];
+	GRBVar** r;
+	r = new GRBVar* [data.number_customers];
 	for (int i = 0; i < data.number_customers; ++i)
-		r[i] = model.addVars(number_sub_intervals[i], GRB_BINARY);
+		r[i] = new GRBVar[number_sub_intervals[i]];
+	for (int i = 0; i < data.number_customers; ++i)
+		for (int k = 0; k < number_sub_intervals[i]; ++k)
+			r[i][k] = model.addVar(0, 1, 0, GRB_BINARY, "r_" + to_string(i) + "_" + to_string(k));
 
 	//cout << "Decision variables: s_{ik}\n" << endl;
-	GRBVar** s = 0;
-	s = new GRBVar * [data.number_customers];
+	GRBVar** s;
+	s = new GRBVar* [data.number_customers];
 	for (int i = 0; i < data.number_customers; ++i)
 		s[i] = new GRBVar[number_sub_intervals[i]];
 	for (int i = 0; i < data.number_customers; ++i)
 		for (int k = 0; k < number_sub_intervals[i]; ++k)
-			s[i][k] = model.addVar(0.0, 1.0, 0.0, GRB_CONTINUOUS);
+			s[i][k] = model.addVar(0, 1, 0, GRB_CONTINUOUS,"s_" + to_string(i) + "_" + to_string(k));
 
 	//cout << "Slack variables : theta_i\n" << endl;
 	GRBVar* theta = 0;
-	theta = model.addVars(data.number_customers, GRB_CONTINUOUS);
+	theta = new GRBVar[data.number_customers];
+	for (int i = 0; i < data.number_customers; ++i)
+		theta[i] = model.addVar(0, GRB_INFINITY, 0, GRB_CONTINUOUS, "theta_" + to_string(i));
 
 	//Constraints related to e^{y_i}
 	//exp(c[i][0]) = alpha * no_purchase[i] => remove form both sides
 	for (int i = 0; i < data.number_customers; ++i) {
-		GRBLinExpr sum_r = 0, sum_x = 0;
+		GRBLinExpr sum_r, sum_x;
 		for (int k = 0; k < number_sub_intervals[i]; ++k) {
 			sum_r += (exp(c[i][k + 1]) - exp(c[i][k])) * r[i][k];
 		}
 		for (int j = 0; j < data.number_products; ++j)
 			sum_x += (alpha[i] - data.revenue[i][j]) * x[j] * data.utilities[i][j];
 
-		model.addConstr(sum_r >= sum_x);
+		model.addConstr(sum_r >= sum_x, "ct_e_y_" + to_string(i));
 	}
 
 	//Constraints related to y_i
 	for (int i = 0; i < data.number_customers; ++i) {
-		GRBLinExpr sum_r = 0;
+		GRBLinExpr sum_r;
 		for (int k = 0; k < number_sub_intervals[i]; ++k) {
 			sum_r += (c[i][k + 1] - c[i][k]) * r[i][k];
 		}
 
-		model.addConstr(y[i] == c[i][0] + sum_r);
+		model.addConstr(y[i] == c[i][0] + sum_r, "ct_y_" + to_string(i));
 	}
 
 	//Constraints related to s_{ik} and r_{ik}
 	for (int i = 0; i < data.number_customers; ++i) {
 		for (int k = 0; k < number_sub_intervals[i]; ++k) {
-			model.addConstr(r[i][k] >= s[i][k]);
+			model.addConstr(r[i][k] >= s[i][k], "ct_rs_" + to_string(i) + "_" + to_string(k));
 
 			if (k < number_sub_intervals[i] - 1) {
-				model.addConstr(s[i][k] >= s[i][k + 1]);
-				model.addConstr(s[i][k] >= r[i][k + 1]);
+				model.addConstr(s[i][k] >= s[i][k + 1], "ct_ss_" + to_string(i) + "_" + to_string(k));
+				model.addConstr(s[i][k] >= r[i][k + 1], "ct_sr_" + to_string(i) + "_" + to_string(k));
 			}
 		}
 	}
 
 	//Budget constraint
-	GRBLinExpr capacity = 0;
+	GRBLinExpr capacity;
 	for (int j = 0; j < data.number_products; ++j) {
 		capacity += x[j];
 	}
-	model.addConstr(capacity <= budget);
+	model.addConstr(capacity <= budget, "ct_budget");
 
 	//Objective
-	GRBLinExpr obj = 0;
+	GRBLinExpr obj;
 	for (int i = 0; i < data.number_customers; ++i)
 		obj += theta[i];
 	model.setObjective(obj, GRB_MINIMIZE);
@@ -333,7 +347,7 @@ void CuttingPlaneGurobi::solve(Data data, int budget) {
 
 		//compute gradient e^{y+z} at initial_x, initial_y, initial_z and set up constraints related to theta
 		for (int i = 0; i < data.number_customers; ++i)
-			model.addConstr(theta[i] >= exp(initial_y[i] + initial_z[i]) * (1 + y[i] - initial_y[i] + z[i] - initial_z[i]));
+			model.addConstr(theta[i] >= exp(initial_y[i] + initial_z[i]) * (1 + y[i] - initial_y[i] + z[i] - initial_z[i]), "ct_sub_gradient_y+z_" + to_string(i));
 
 		//compute gradient e^{-z} at initial_x, initial_y, initial_z and set up constraints related to e^{-z}
 		for (int i = 0; i < data.number_customers; ++i) {
@@ -341,7 +355,7 @@ void CuttingPlaneGurobi::solve(Data data, int budget) {
 			for (int j = 0; j < data.number_products; ++j)
 				sum += x[j] * data.utilities[i][j];
 			sum += data.no_purchase[i];
-			model.addConstr(exp(-initial_z[i]) * (1 - z[i] + initial_z[i]) <= sum);
+			model.addConstr(exp(-initial_z[i]) * (1 - z[i] + initial_z[i]) <= sum, "ct_sub_gradient_z_" + to_string(i));
 		}
 
 		//solve
@@ -350,7 +364,6 @@ void CuttingPlaneGurobi::solve(Data data, int budget) {
 
 		model.write("cutting_plane.lp");
 		model.set(GRB_DoubleParam_TimeLimit, run_time);
-		//model.set(GRB_INT_PAR_OUTPUTFLAG, 0);
 		
 		model.optimize();
 
