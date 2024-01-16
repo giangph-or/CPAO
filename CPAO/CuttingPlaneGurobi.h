@@ -36,4 +36,5 @@ public:
     double calculate_optimal_bound_y(Data data, int budget, int i, double alpha);
     vector<int> greedy(Data data, int budget, vector<double> alpha);
     void solve(Data data, int budget);
+    void solve_build_in(Data data, int budget);
 };

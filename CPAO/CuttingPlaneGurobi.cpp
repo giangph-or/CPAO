@@ -237,7 +237,6 @@ void CuttingPlaneGurobi::solve(Data data, int budget) {
 		number_sub_intervals[i] = c[i].size() - 1;
 
 	GRBEnv env = GRBEnv(true);
-	env.set("LogFile", "conic_ao.log");
 	env.start();
 
 	GRBModel model = GRBModel(env);
@@ -367,6 +366,198 @@ void CuttingPlaneGurobi::solve(Data data, int budget) {
 		model.set(GRB_IntParam_MIPFocus, 3);
 		//model.set(GRB_IntParam_MIPFocus, 1);
 		
+		model.optimize();
+
+		if (model.get(GRB_IntAttr_SolCount) > 0) {
+			cout << "\nIteration " << num_iterative << endl;
+			//update obj, variables
+			obj_val_cplex = model.get(GRB_DoubleAttr_ObjVal);
+			cout << "\nResult product list: " << endl;
+			for (int j = 0; j < data.number_products; ++j)
+				if (x[j].get(GRB_DoubleAttr_X) > 0.5) {
+					initial_x[j] = 1;
+					cout << j << " ";
+				}
+				else initial_x[j] = 0;
+			cout << endl;
+
+			for (int i = 0; i < data.number_customers; ++i) {
+				initial_y[i] = y[i].get(GRB_DoubleAttr_X);
+				initial_z[i] = z[i].get(GRB_DoubleAttr_X);
+				//cout << initial_y[i] << " " << initial_z[i] << endl;
+			}
+
+			//sub_obj = calculate_original_obj(data, initial_x, alpha);
+			sub_obj = 0;
+			for (int i = 0; i < data.number_customers; ++i) {
+				sub_obj += exp(initial_y[i] + initial_z[i]);
+			}
+
+			cout << "Sub obj = " << std::setprecision(7) << fixed << sub_obj << endl;
+			cout << "Cplex obj = " << std::setprecision(7) << fixed << obj_val_cplex << endl;
+			master_obj_val = calculate_master_obj(data, initial_x);
+			cout << "Master obj = " << std::setprecision(7) << fixed << master_obj_val << endl;
+
+			if (master_obj_val > best_obj) {
+				best_obj = master_obj_val;
+				best_x = initial_x;
+			}
+
+			//check time
+			auto time_now = std::chrono::steady_clock::now(); //get now time
+			std::chrono::duration<double> after_cut = time_now - start;
+			cout << "Time now: " << after_cut.count() << endl;
+			cout << "--- --- --- --- --- --- ---" << endl;
+
+			if (after_cut.count() > time_limit) break;
+			run_time = time_limit - after_cut.count();
+		}
+		else {
+			cout << "Iteration " << num_iterative << ". No solution found..." << endl;
+			auto end = chrono::steady_clock::now();
+			chrono::duration<double> elapsed_seconds = end - start;
+			time_for_solve = elapsed_seconds.count();
+			break;
+		}
+	}
+	auto end = chrono::steady_clock::now();
+	chrono::duration<double> total_time = end - start;
+	time_for_solve = total_time.count();
+
+	cout << "\nObjective value: " << setprecision(5) << best_obj << endl;
+	cout << "Solution: ";
+	for (int j = 0; j < data.number_products; ++j)
+		if (best_x[j] == 1)
+			cout << j << " ";
+	cout << "\nTotal time: " << time_for_solve << " seconds" << endl;
+
+	ofstream report_results(out_res_csv, ofstream::out);
+	report_results.precision(10);
+	report_results << best_obj << " " << time_for_solve << endl;
+	for (int j = 0; j < data.number_products; ++j)
+		if (best_x[j] == 1)
+			report_results << j << " ";
+	report_results.close();
+}
+
+void CuttingPlaneGurobi::solve_build_in(Data data, int budget) {
+	auto start = chrono::steady_clock::now(); //get start time
+
+	vector<double> alpha(data.number_customers, -1);
+	for (int i = 0; i < data.number_customers; ++i)
+		for (int j = 0; j < data.number_products; ++j)
+			if (data.revenue[i][j] > alpha[i])
+				alpha[i] = data.revenue[i][j];
+
+	//Calculate initial_x, initial_y, initial_z
+	vector<int> initial_x = greedy(data, budget, alpha);
+
+	vector<int> best_x = initial_x;
+	double best_obj = calculate_master_obj(data, best_x);
+
+	vector<double> initial_y = calculate_y(data, initial_x, alpha);
+	vector<double> initial_z = calculate_z(data, initial_x);
+
+	//create bounds c^i_k for e^{y_i}
+	//vector<vector<double>> c = create_sub_intervals(data, budget, alpha, 200);
+	vector<vector<double>> c = optimal_sub_intervals(data, budget, alpha, 0.00005);
+
+	GRBEnv env = GRBEnv(true);
+	env.start();
+
+	GRBModel model = GRBModel(env);
+
+	//cout << "Decison variables : x_j\n" << endl;
+	GRBVar* x;
+	x = new GRBVar[data.number_products];
+	for (int j = 0; j < data.number_products; ++j)
+		x[j] = model.addVar(0, 1, 0, GRB_BINARY, "x_" + to_string(j));
+
+	//cout << "Slack variables : y_i\n" << endl;
+	GRBVar* y;
+	y = new GRBVar[data.number_customers];
+	for (int i = 0; i < data.number_customers; ++i)
+		y[i] = model.addVar(-GRB_INFINITY, GRB_INFINITY, 0, GRB_CONTINUOUS, "y_" + to_string(i));
+
+	//cout << "Slack variables : u_i\n" << endl;
+	GRBVar* u;
+	u = new GRBVar[data.number_customers];
+	for (int i = 0; i < data.number_customers; ++i)
+		u[i] = model.addVar(alpha[i] * data.no_purchase[i], alpha[i] * data.no_purchase[i] + calculate_bound_y(data, budget, i, alpha[i]), 0, GRB_CONTINUOUS, "u_" + to_string(i));
+
+	//cout << "Slack variables : z_i\n" << endl;
+	GRBVar* z;
+	z = new GRBVar[data.number_customers];
+	for (int i = 0; i < data.number_customers; ++i)
+		z[i] = model.addVar(-GRB_INFINITY, GRB_INFINITY, 0, GRB_CONTINUOUS, "z_" + to_string(i));
+
+	//cout << "Slack variables : theta_i\n" << endl;
+	GRBVar* theta = 0;
+	theta = new GRBVar[data.number_customers];
+	for (int i = 0; i < data.number_customers; ++i)
+		theta[i] = model.addVar(0, GRB_INFINITY, 0, GRB_CONTINUOUS, "theta_" + to_string(i));
+
+	for (int i = 0; i < data.number_customers; ++i)
+		model.addGenConstrExp(y[i], u[i]);
+	
+	for (int i = 0; i < data.number_customers; ++i) {
+		GRBLinExpr sum_x;
+		for (int j = 0; j < data.number_products; ++j)
+			sum_x += (alpha[i] - data.revenue[i][j]) * x[j] * data.utilities[i][j];
+		sum_x += alpha[i] * data.no_purchase[i];
+		model.addConstr(u[i] >= sum_x);
+	}
+
+	//Budget constraint
+	GRBLinExpr capacity;
+	for (int j = 0; j < data.number_products; ++j) {
+		capacity += x[j];
+	}
+	model.addConstr(capacity <= budget, "ct_budget");
+
+	//Objective
+	GRBLinExpr obj;
+	for (int i = 0; i < data.number_customers; ++i)
+		obj += theta[i];
+	model.setObjective(obj, GRB_MINIMIZE);
+
+	auto time_before_cut = chrono::steady_clock::now();
+	chrono::duration<double> before_cut = time_before_cut - start;
+
+	double run_time = time_limit - before_cut.count();
+
+	int num_iterative = 0;
+	double stop_param = 1e-4;
+	double sub_obj = 1.0;
+	double obj_val_cplex = 0.0;
+
+	//Add cut iteratively
+	while (sub_obj > stop_param + obj_val_cplex) {
+
+		//compute gradient e^{y+z} at initial_x, initial_y, initial_z and set up constraints related to theta
+		for (int i = 0; i < data.number_customers; ++i)
+			model.addConstr(theta[i] >= exp(initial_y[i] + initial_z[i]) * (1 + y[i] - initial_y[i] + z[i] - initial_z[i]), "ct_sub_gradient_y+z_" + to_string(i));
+
+		//compute gradient e^{-z} at initial_x, initial_y, initial_z and set up constraints related to e^{-z}
+		for (int i = 0; i < data.number_customers; ++i) {
+			GRBLinExpr sum = 0;
+			for (int j = 0; j < data.number_products; ++j)
+				sum += x[j] * data.utilities[i][j];
+			sum += data.no_purchase[i];
+			model.addConstr(exp(-initial_z[i]) * (1 - z[i] + initial_z[i]) <= sum, "ct_sub_gradient_z_" + to_string(i));
+		}
+
+		//solve
+		num_iterative++;
+		cout << "Remaining time: " << run_time << endl;
+
+		model.write("cutting_plane.lp");
+		model.set(GRB_DoubleParam_TimeLimit, run_time);
+		model.set(GRB_IntParam_MIPFocus, 3);
+		//model.set(GRB_IntParam_MIPFocus, 1);
+		model.set(GRB_IntParam_FuncPieces, 1);
+		model.set(GRB_DoubleParam_FuncPieceLength, 1e-2);
+
 		model.optimize();
 
 		if (model.get(GRB_IntAttr_SolCount) > 0) {

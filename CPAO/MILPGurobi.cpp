@@ -102,7 +102,6 @@ void MILPGurobi::solve(Data data, int budget) {
             }
 
     GRBEnv env = GRBEnv(true);
-    env.set("LogFile", "milp_ao.log");
     env.start();
 
     GRBModel model = GRBModel(env);

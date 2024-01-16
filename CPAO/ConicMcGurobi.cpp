@@ -106,7 +106,6 @@ void ConicMcGurobi::solve(Data data, int budget) {
                 y_l[i][j] = 1.0 / (data.no_purchase[i] + calculate_sum_utility(data, budget, i, j));
 
     GRBEnv env = GRBEnv(true);
-    env.set("LogFile", "conic_ao.log");
     env.start();
 
     GRBModel model = GRBModel(env);
