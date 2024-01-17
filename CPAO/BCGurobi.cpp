@@ -221,24 +221,28 @@ void BCGurobi::solve_build_in(Data data, int budget) {
 	y = new GRBVar[data.number_customers];
 	for (int i = 0; i < data.number_customers; ++i)
 		y[i] = model.addVar(log(alpha[i] * data.no_purchase[i]), log(calculate_bound_y(data, budget, i, alpha[i])), 0, GRB_CONTINUOUS, "y_" + to_string(i));
+		//y[i] = model.addVar(-GRB_INFINITY, GRB_INFINITY, 0, GRB_CONTINUOUS, "y_" + to_string(i));
 
 	//cout << "Slack variables : u_i\n" << endl;
 	GRBVar* u;
 	u = new GRBVar[data.number_customers];
 	for (int i = 0; i < data.number_customers; ++i)
 		u[i] = model.addVar(alpha[i] * data.no_purchase[i], calculate_bound_y(data, budget, i, alpha[i]), 0, GRB_CONTINUOUS, "u_" + to_string(i));
+		//u[i] = model.addVar(-GRB_INFINITY, GRB_INFINITY, 0, GRB_CONTINUOUS, "u_" + to_string(i));
 
 	//cout << "Slack variables : z_i\n" << endl;
 	GRBVar* z;
 	z = new GRBVar[data.number_customers];
 	for (int i = 0; i < data.number_customers; ++i)
-		z[i] = model.addVar(-log(data.no_purchase[i]), -log(calculate_bound_z(data, budget, i)), 0, GRB_CONTINUOUS, "z_" + to_string(i));
+		z[i] = model.addVar(-log(calculate_bound_z(data, budget, i)), -log(data.no_purchase[i]), 0, GRB_CONTINUOUS, "z_" + to_string(i));
+		//z[i] = model.addVar(-GRB_INFINITY, GRB_INFINITY, 0, GRB_CONTINUOUS, "z_" + to_string(i));
 
 	//cout << "Slack variables : theta_i\n" << endl;
 	GRBVar* theta = 0;
 	theta = new GRBVar[data.number_customers];
 	for (int i = 0; i < data.number_customers; ++i)
-		theta[i] = model.addVar(0, GRB_INFINITY, 0, GRB_CONTINUOUS, "theta_" + to_string(i));
+		theta[i] = model.addVar(exp(log(alpha[i] * data.no_purchase[i]) - log(calculate_bound_z(data, budget, i))),
+			exp(log(calculate_bound_y(data, budget, i, alpha[i])) - log(data.no_purchase[i])), 0, GRB_CONTINUOUS, "theta_" + to_string(i));
 
 	for (int i = 0; i < data.number_customers; ++i)
 		model.addGenConstrExp(y[i], u[i]);
@@ -286,7 +290,7 @@ void BCGurobi::solve_build_in(Data data, int budget) {
 
 	model.write("branch_and_cut.lp");
 	model.set(GRB_DoubleParam_TimeLimit, run_time);
-	model.set(GRB_IntParam_MIPFocus, 2);
+	//model.set(GRB_IntParam_MIPFocus, 2);
 	model.set(GRB_IntParam_FuncPieces, 1);
 	model.set(GRB_DoubleParam_FuncPieceLength, 1e-2);
 	//model.set(GRB_IntParam_OutputFlag, 0);
