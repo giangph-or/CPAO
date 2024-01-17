@@ -52,7 +52,7 @@ vector<int> ConicMcGurobi::find_bound_y(Data data, int i, int budget) {
     return x_sol;
 }
 
-double ConicMcGurobi::calculate_sum_utility(Data data, int budget, int i, int w) {
+double ConicMcGurobi::calculate_sum_utility(Data data, int budget, int i) {
     vector<pair<double, int>> u(data.number_products);
     for (int j = 0; j < data.number_products; ++j) {
         u[j].first = data.utilities[i][j];
@@ -62,11 +62,8 @@ double ConicMcGurobi::calculate_sum_utility(Data data, int budget, int i, int w)
     double sum = 0;
     int k = 0, count = 0;
     while (count < budget) {
-        if (u[k].second != w) {
-            sum += u[k].first;
-            count++;
-        }
-        k++;
+        sum += u[count].first;
+        count++;
     }
     return sum;
 }
@@ -163,15 +160,15 @@ void ConicMcGurobi::solve(Data data, int budget) {
     for (int i = 0; i < data.number_customers; ++i)
         for (int j = 0; j < data.number_products; ++j)
             if (bound[i][j] == 1) {
-                model.addConstr(z[i][j] >= x[j] * 1.0 / (data.no_purchase[i] + calculate_sum_utility(data, budget, i, j)));
+                model.addConstr(z[i][j] >= x[j] * 1.0 / (data.no_purchase[i] + calculate_sum_utility(data, budget, i)));
                 if(budget < data.number_products)
-                    model.addConstr(z[i][j] <= y[i] - (1 - x[j]) * 1.0 / (data.no_purchase[i] + calculate_sum_utility(data, budget + 1, i, j) - data.utilities[i][j]));
+                    model.addConstr(z[i][j] <= y[i] - (1 - x[j]) * 1.0 / (data.no_purchase[i] + calculate_sum_utility(data, budget + 1, i) - data.utilities[i][j]));
                 else
-                    model.addConstr(z[i][j] <= y[i] - (1 - x[j]) * 1.0 / (data.no_purchase[i] + calculate_sum_utility(data, budget, i, j) - data.utilities[i][j]));
+                    model.addConstr(z[i][j] <= y[i] - (1 - x[j]) * 1.0 / (data.no_purchase[i] + calculate_sum_utility(data, budget, i) - data.utilities[i][j]));
             }
             else {
-                model.addConstr(z[i][j] <= y[i] - (1 - x[j]) * 1.0 / (data.no_purchase[i] + calculate_sum_utility(data, budget, i, j)));
-                model.addConstr(z[i][j] >= x[j] * 1.0 / (data.no_purchase[i] + data.utilities[i][j] + calculate_sum_utility(data, budget - 1, i, j)));
+                model.addConstr(z[i][j] <= y[i] - (1 - x[j]) * 1.0 / (data.no_purchase[i] + calculate_sum_utility(data, budget, i)));
+                model.addConstr(z[i][j] >= x[j] * 1.0 / (data.no_purchase[i] + data.utilities[i][j] + calculate_sum_utility(data, budget - 1, i)));
             }
 
     //cout << "Budget constraint\n" << endl;

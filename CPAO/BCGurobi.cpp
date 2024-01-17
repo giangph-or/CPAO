@@ -143,6 +143,22 @@ double BCGurobi::calculate_bound_y(Data data, int budget, int i, double alpha) {
 
 	for (int j = 0; j < budget; ++j)
 		sum += u[j];
+	sum += alpha * data.no_purchase[i];
+
+	return sum;
+}
+
+double BCGurobi::calculate_bound_z(Data data, int budget, int i) {
+	double sum = 0;
+	vector<double> u(data.number_products);
+	for (int j = 0; j < data.number_products; ++j)
+		u[j] = data.utilities[i][j];
+
+	sort(u.begin(), u.end(), greater<double>());
+
+	for (int j = 0; j < budget; ++j)
+		sum += u[j];
+	sum += data.no_purchase[i];
 
 	return sum;
 }
@@ -204,19 +220,19 @@ void BCGurobi::solve_build_in(Data data, int budget) {
 	GRBVar* y;
 	y = new GRBVar[data.number_customers];
 	for (int i = 0; i < data.number_customers; ++i)
-		y[i] = model.addVar(-GRB_INFINITY, GRB_INFINITY, 0, GRB_CONTINUOUS, "y_" + to_string(i));
+		y[i] = model.addVar(log(alpha[i] * data.no_purchase[i]), log(calculate_bound_y(data, budget, i, alpha[i])), 0, GRB_CONTINUOUS, "y_" + to_string(i));
 
 	//cout << "Slack variables : u_i\n" << endl;
 	GRBVar* u;
 	u = new GRBVar[data.number_customers];
 	for (int i = 0; i < data.number_customers; ++i)
-		u[i] = model.addVar(alpha[i] * data.no_purchase[i], alpha[i] * data.no_purchase[i] + calculate_bound_y(data, budget, i, alpha[i]), 0, GRB_CONTINUOUS, "u_" + to_string(i));
+		u[i] = model.addVar(alpha[i] * data.no_purchase[i], calculate_bound_y(data, budget, i, alpha[i]), 0, GRB_CONTINUOUS, "u_" + to_string(i));
 
 	//cout << "Slack variables : z_i\n" << endl;
 	GRBVar* z;
 	z = new GRBVar[data.number_customers];
 	for (int i = 0; i < data.number_customers; ++i)
-		z[i] = model.addVar(-GRB_INFINITY, GRB_INFINITY, 0, GRB_CONTINUOUS, "z_" + to_string(i));
+		z[i] = model.addVar(-log(data.no_purchase[i]), -log(calculate_bound_z(data, budget, i)), 0, GRB_CONTINUOUS, "z_" + to_string(i));
 
 	//cout << "Slack variables : theta_i\n" << endl;
 	GRBVar* theta = 0;
@@ -270,11 +286,10 @@ void BCGurobi::solve_build_in(Data data, int budget) {
 
 	model.write("branch_and_cut.lp");
 	model.set(GRB_DoubleParam_TimeLimit, run_time);
-	//model.set(GRB_IntParam_MIPFocus, 3);
+	model.set(GRB_IntParam_MIPFocus, 2);
 	model.set(GRB_IntParam_FuncPieces, 1);
 	model.set(GRB_DoubleParam_FuncPieceLength, 1e-2);
 	//model.set(GRB_IntParam_OutputFlag, 0);
-	model.set(GRB_DoubleParam_MIPGap, 1e-5);
 
 	CB cb = CB(x, y, z, theta, data.number_products, data.number_customers, data.no_purchase, data.utilities, data.revenue);
 	model.setCallback(&cb);

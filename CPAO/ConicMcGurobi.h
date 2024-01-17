@@ -25,7 +25,7 @@ public:
     ConicMcGurobi();
     ConicMcGurobi(Data data, double time_limit, string outfile);
     vector<int> find_bound_y(Data data, int i, int budget);
-    double calculate_sum_utility(Data data, int budget, int i, int j);
+    double calculate_sum_utility(Data data, int budget, int i);
     double calculate_master_obj(Data data, vector<int> x);
     void solve(Data data, int budget);
 };

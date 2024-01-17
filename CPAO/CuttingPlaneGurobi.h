@@ -25,7 +25,6 @@ public:
     CuttingPlaneGurobi();
     CuttingPlaneGurobi(Data data, double time_limit, string outfile);
     double next_approximate_point(double b, double epsilon);
-    vector<vector<double>> create_sub_intervals(Data data, int budget, vector<double> alpha, int number_itervals);
     vector<vector<double>> optimal_sub_intervals(Data data, int budget, vector<double> alpha, double epsilon);
     vector<double> calculate_y(Data data, vector<int> x, vector<double> alpha);
     vector<double> calculate_z(Data data, vector<int> x);
@@ -33,6 +32,7 @@ public:
     double calculate_master_obj(Data data, vector<int> x);
     double calculate_original_obj_tmp(Data data, vector<int> x, vector<double> alpha, int i);
     double calculate_bound_y(Data data, int budget, int i, double alpha);
+    double calculate_bound_z(Data data, int budget, int i);
     double calculate_optimal_bound_y(Data data, int budget, int i, double alpha);
     vector<int> greedy(Data data, int budget, vector<double> alpha);
     void solve(Data data, int budget);
