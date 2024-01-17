@@ -136,29 +136,29 @@ void MILPGurobi::solve(Data data, int budget) {
         model.addConstr(sum_z + y[i] * data.no_purchase[i] == 1);
     }
 
-    //Constraints related to x, y and z
-    for (int i = 0; i < data.number_customers; ++i)
-        for (int j = 0; j < data.number_products; ++j)
-            model.addConstr(data.no_purchase[i] * (y[i] - z[i][j]) <= 1 - x[j]);
-
     //Bound z
     for (int i = 0; i < data.number_customers; ++i)
         for (int j = 0; j < data.number_products; ++j)
             model.addConstr(z[i][j] <= y[i]);
 
-    //Constraints related to x and z
     for (int i = 0; i < data.number_customers; ++i)
         for (int j = 0; j < data.number_products; ++j)
-            model.addConstr(data.no_purchase[i] * z[i][j] <= x[j]);  
+            model.addConstr(z[i][j] <= x[j] * (1.0 / (data.no_purchase[i] + data.utilities[i][j])));
 
     //McCornick constraints
     for (int i = 0; i < data.number_customers; ++i)
         for (int j = 0; j < data.number_products; ++j)
             if (bound[i][j] == 1) {
-                model.addConstr(z[i][j] * (data.no_purchase[i] + data.utilities[i][j]) <= x[j]);
-                model.addConstr(z[i][j] >= y_l[i][j] * x[j]);
+                model.addConstr(z[i][j] >= x[j] * 1.0 / (data.no_purchase[i] + calculate_sum_utility(data, budget, i, j)));
+                if (budget < data.number_products)
+                    model.addConstr(z[i][j] <= y[i] - (1 - x[j]) * 1.0 / (data.no_purchase[i] + calculate_sum_utility(data, budget + 1, i, j) - data.utilities[i][j]));
+                else
+                    model.addConstr(z[i][j] <= y[i] - (1 - x[j]) * 1.0 / (data.no_purchase[i] + calculate_sum_utility(data, budget, i, j) - data.utilities[i][j]));
             }
-            else model.addConstr(z[i][j] <= y[i] - y_l[i][j] * (1 - x[j]));
+            else {
+                model.addConstr(z[i][j] <= y[i] - (1 - x[j]) * 1.0 / (data.no_purchase[i] + calculate_sum_utility(data, budget, i, j)));
+                model.addConstr(z[i][j] >= x[j] * 1.0 / (data.no_purchase[i] + data.utilities[i][j] + calculate_sum_utility(data, budget - 1, i, j)));
+            }
 
     //Budget constraint
     GRBLinExpr capacity;

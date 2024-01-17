@@ -550,7 +550,7 @@ void CuttingPlaneGurobi::solve_build_in(Data data, int budget) {
 
 		model.write("cutting_plane.lp");
 		model.set(GRB_DoubleParam_TimeLimit, run_time);
-		model.set(GRB_IntParam_MIPFocus, 3);
+		//model.set(GRB_IntParam_MIPFocus, 3);
 		model.set(GRB_IntParam_FuncPieces, 1);
 		model.set(GRB_DoubleParam_FuncPieceLength, 1e-2);
 		model.set(GRB_IntParam_OutputFlag, 0);

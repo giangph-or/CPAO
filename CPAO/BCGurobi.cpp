@@ -273,7 +273,7 @@ void BCGurobi::solve_build_in(Data data, int budget) {
 	//model.set(GRB_IntParam_MIPFocus, 3);
 	model.set(GRB_IntParam_FuncPieces, 1);
 	model.set(GRB_DoubleParam_FuncPieceLength, 1e-2);
-	model.set(GRB_IntParam_OutputFlag, 0);
+	//model.set(GRB_IntParam_OutputFlag, 0);
 	model.set(GRB_DoubleParam_MIPGap, 1e-5);
 
 	CB cb = CB(x, y, z, theta, data.number_products, data.number_customers, data.no_purchase, data.utilities, data.revenue);
@@ -340,12 +340,6 @@ void CB::callback() {
 			double* initial_z = new double[customers];
 			double* initial_theta = new double[customers];
 			initial_x = getSolution(x, products);
-			cout << "Consider solution: " << endl;
-			for (int j = 0; j < products; ++j)
-				if (initial_x[j] > 0)
-					cout << j << " ";
-			cout << endl;
-			cout << "Master obj: " << calculate_master_obj(initial_x) << endl;
 			initial_y = getSolution(y, customers);
 			initial_z = getSolution(z, customers);
 			initial_theta = getSolution(theta, customers);

@@ -97,16 +97,6 @@ void ConicMcGurobi::solve(Data data, int budget) {
     for (int i = 0; i < data.number_customers; ++i)
         bound[i] = find_bound_y(data, i, budget);
 
-    vector<vector<double>> y_l(data.number_customers);
-    for (int i = 0; i < data.number_customers; ++i)
-        y_l[i].resize(data.number_products);
-    for (int i = 0; i < data.number_customers; ++i)
-        for (int j = 0; j < data.number_products; ++j)
-            if (bound[i][j] == 1)
-                y_l[i][j] = 1.0 / (data.no_purchase[i] + data.utilities[i][j] + calculate_sum_utility(data, budget - 1, i, j));
-            else
-                y_l[i][j] = 1.0 / (data.no_purchase[i] + calculate_sum_utility(data, budget, i, j));
-
     GRBEnv env = GRBEnv(true);
     env.start();
 
@@ -137,7 +127,7 @@ void ConicMcGurobi::solve(Data data, int budget) {
     GRBVar* w = 0;
     w = new GRBVar[data.number_customers];
     for (int i = 0; i < data.number_customers; ++i)
-        w[i] = model.addVar(0, GRB_INFINITY, 0, GRB_CONTINUOUS, "w_" + to_string(i));
+        w[i] = model.addVar(data.no_purchase[i], GRB_INFINITY, 0, GRB_CONTINUOUS, "w_" + to_string(i));
 
     //cout << "Constraints related to w and x\n" << endl;
     for (int i = 0; i < data.number_customers; ++i) {
@@ -165,19 +155,24 @@ void ConicMcGurobi::solve(Data data, int budget) {
         model.addConstr(data.no_purchase[i] * y[i] + sum_z >= 1);
     }
 
+    for (int i = 0; i < data.number_customers; ++i)
+        for (int j = 0; j < data.number_products; ++j)
+            model.addConstr(z[i][j] <= x[j] * (1.0 / (data.no_purchase[i] + data.utilities[i][j])));
+
     //McCornick constraints
     for (int i = 0; i < data.number_customers; ++i)
         for (int j = 0; j < data.number_products; ++j)
             if (bound[i][j] == 1) {
-                model.addConstr(z[i][j] * (data.no_purchase[i] + data.utilities[i][j]) <= x[j]);
-                model.addConstr(z[i][j] >= y_l[i][j] * x[j]);
+                model.addConstr(z[i][j] >= x[j] * 1.0 / (data.no_purchase[i] + calculate_sum_utility(data, budget, i, j)));
+                if(budget < data.number_products)
+                    model.addConstr(z[i][j] <= y[i] - (1 - x[j]) * 1.0 / (data.no_purchase[i] + calculate_sum_utility(data, budget + 1, i, j) - data.utilities[i][j]));
+                else
+                    model.addConstr(z[i][j] <= y[i] - (1 - x[j]) * 1.0 / (data.no_purchase[i] + calculate_sum_utility(data, budget, i, j) - data.utilities[i][j]));
             }
-            else model.addConstr(z[i][j] <= y[i] - y_l[i][j] * (1 - x[j]));
-
-    //Constraints related to x, y and z
-    for (int i = 0; i < data.number_customers; ++i)
-        for (int j = 0; j < data.number_products; ++j)
-            model.addConstr(data.no_purchase[i] * (y[i] - z[i][j]) <= 1 - x[j]);
+            else {
+                model.addConstr(z[i][j] <= y[i] - (1 - x[j]) * 1.0 / (data.no_purchase[i] + calculate_sum_utility(data, budget, i, j)));
+                model.addConstr(z[i][j] >= x[j] * 1.0 / (data.no_purchase[i] + data.utilities[i][j] + calculate_sum_utility(data, budget - 1, i, j)));
+            }
 
     //cout << "Budget constraint\n" << endl;
     GRBLinExpr capacity;
@@ -201,7 +196,7 @@ void ConicMcGurobi::solve(Data data, int budget) {
     model.set(GRB_DoubleParam_TimeLimit, time_limit - elapsed_seconds.count());
     model.set(GRB_IntParam_MIQCPMethod, 1);
     model.write("conic.lp");
-    model.set(GRB_IntParam_OutputFlag, 0);
+    //model.set(GRB_IntParam_OutputFlag, 0);
 
     model.optimize();
 
