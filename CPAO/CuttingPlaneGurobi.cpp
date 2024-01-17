@@ -365,6 +365,7 @@ void CuttingPlaneGurobi::solve(Data data, int budget) {
 		model.set(GRB_DoubleParam_TimeLimit, run_time);
 		model.set(GRB_IntParam_MIPFocus, 3);
 		//model.set(GRB_IntParam_MIPFocus, 1);
+		model.set(GRB_IntParam_OutputFlag, 0);
 		
 		model.optimize();
 
@@ -394,7 +395,7 @@ void CuttingPlaneGurobi::solve(Data data, int budget) {
 			}
 
 			cout << "Sub obj = " << std::setprecision(7) << fixed << sub_obj << endl;
-			cout << "Cplex obj = " << std::setprecision(7) << fixed << obj_val_cplex << endl;
+			cout << "Gurobi obj = " << std::setprecision(7) << fixed << obj_val_cplex << endl;
 			master_obj_val = calculate_master_obj(data, initial_x);
 			cout << "Master obj = " << std::setprecision(7) << fixed << master_obj_val << endl;
 
@@ -457,10 +458,6 @@ void CuttingPlaneGurobi::solve_build_in(Data data, int budget) {
 
 	vector<double> initial_y = calculate_y(data, initial_x, alpha);
 	vector<double> initial_z = calculate_z(data, initial_x);
-
-	//create bounds c^i_k for e^{y_i}
-	//vector<vector<double>> c = create_sub_intervals(data, budget, alpha, 200);
-	vector<vector<double>> c = optimal_sub_intervals(data, budget, alpha, 0.00005);
 
 	GRBEnv env = GRBEnv(true);
 	env.start();
@@ -554,9 +551,9 @@ void CuttingPlaneGurobi::solve_build_in(Data data, int budget) {
 		model.write("cutting_plane.lp");
 		model.set(GRB_DoubleParam_TimeLimit, run_time);
 		model.set(GRB_IntParam_MIPFocus, 3);
-		//model.set(GRB_IntParam_MIPFocus, 1);
 		model.set(GRB_IntParam_FuncPieces, 1);
 		model.set(GRB_DoubleParam_FuncPieceLength, 1e-2);
+		model.set(GRB_IntParam_OutputFlag, 0);
 
 		model.optimize();
 
@@ -586,7 +583,7 @@ void CuttingPlaneGurobi::solve_build_in(Data data, int budget) {
 			}
 
 			cout << "Sub obj = " << std::setprecision(7) << fixed << sub_obj << endl;
-			cout << "Cplex obj = " << std::setprecision(7) << fixed << obj_val_cplex << endl;
+			cout << "Gurobi obj = " << std::setprecision(7) << fixed << obj_val_cplex << endl;
 			master_obj_val = calculate_master_obj(data, initial_x);
 			cout << "Master obj = " << std::setprecision(7) << fixed << master_obj_val << endl;
 

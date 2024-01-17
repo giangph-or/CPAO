@@ -181,7 +181,7 @@ void MILPGurobi::solve(Data data, int budget) {
     
     model.write("milp.lp");
     model.set(GRB_DoubleParam_TimeLimit, time_limit - elapsed_seconds.count());
-    //model.set(GRB_INT_PAR_OUTPUTFLAG, 0);
+    model.set(GRB_IntParam_OutputFlag, 0);
 
     model.optimize();
 
