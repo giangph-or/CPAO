@@ -293,6 +293,7 @@ void BCGurobi::solve_build_in(Data data, int budget) {
 	//model.set(GRB_IntParam_MIPFocus, 2);
 	model.set(GRB_IntParam_FuncPieces, 1);
 	model.set(GRB_DoubleParam_FuncPieceLength, 1e-2);
+	//model.set(GRB_DoubleParam_MIPGap, 1e-3);
 	//model.set(GRB_IntParam_OutputFlag, 0);
 
 	CB cb = CB(x, y, z, theta, data.number_products, data.number_customers, data.no_purchase, data.utilities, data.revenue);
@@ -344,7 +345,7 @@ void BCGurobi::solve_build_in(Data data, int budget) {
 
 	ofstream report_results(out_res_csv, ofstream::out);
 	report_results.precision(10);
-	report_results << master_obj_val << " " << time_for_solve << endl;
+	report_results << obj_val_cplex << " " << master_obj_val << " " << time_for_solve << endl;
 	for (int j = 0; j < data.number_products; ++j)
 		if (sol_x[j] == 1)
 			report_results << j << " ";

@@ -529,9 +529,22 @@ void CuttingPlaneGurobi::solve_build_in(Data data, int budget) {
 	double stop_param = 1e-4;
 	double sub_obj = 1.0;
 	double obj_val_cplex = 0.0;
+	double best_sub_obj = 0;
+
+	int check_e_z = 0;
+	for (int i = 0; i < data.number_customers; ++i) {
+		double sum_x = 0;
+		for (int j = 0; j < data.number_products; ++j)
+			sum_x += initial_x[j] * data.utilities[i][j];
+		sum_x += data.no_purchase[i];
+		if (exp(-initial_z[i]) < sum_x) {
+			check_e_z = 1;
+			break;
+		}
+	}
 
 	//Add cut iteratively
-	while (sub_obj > stop_param + obj_val_cplex) {
+	while (sub_obj > stop_param + obj_val_cplex || check_e_z == 1) {
 
 		//compute gradient e^{y+z} at initial_x, initial_y, initial_z and set up constraints related to theta
 		for (int i = 0; i < data.number_customers; ++i)
@@ -555,6 +568,7 @@ void CuttingPlaneGurobi::solve_build_in(Data data, int budget) {
 		//model.set(GRB_IntParam_MIPFocus, 3);
 		model.set(GRB_IntParam_FuncPieces, 1);
 		model.set(GRB_DoubleParam_FuncPieceLength, 1e-2);
+		//model.set(GRB_DoubleParam_MIPGap, 1e-3);
 		//model.set(GRB_IntParam_OutputFlag, 0);
 
 		model.optimize();
@@ -575,13 +589,24 @@ void CuttingPlaneGurobi::solve_build_in(Data data, int budget) {
 			for (int i = 0; i < data.number_customers; ++i) {
 				initial_y[i] = y[i].get(GRB_DoubleAttr_X);
 				initial_z[i] = z[i].get(GRB_DoubleAttr_X);
-				//cout << initial_y[i] << " " << initial_z[i] << endl;
 			}
 
-			//sub_obj = calculate_original_obj(data, initial_x, alpha);
+			//check the in equation related to theta_i and e^{y_i + z_i} for next iteration
 			sub_obj = 0;
 			for (int i = 0; i < data.number_customers; ++i) {
 				sub_obj += exp(initial_y[i] + initial_z[i]);
+			}
+			//check the inequations related to e^{-z_i} for next iteration
+			check_e_z = 0;
+			for (int i = 0; i < data.number_customers; ++i) {
+				double sum_x = 0;
+				for (int j = 0; j < data.number_products; ++j)
+					sum_x += initial_x[j] * data.utilities[i][j];
+				sum_x += data.no_purchase[i];
+				if (exp(-initial_z[i]) < sum_x) {
+					check_e_z = 1;
+					break;
+				}
 			}
 
 			cout << "Sub obj = " << std::setprecision(7) << fixed << sub_obj << endl;
@@ -592,6 +617,7 @@ void CuttingPlaneGurobi::solve_build_in(Data data, int budget) {
 			if (master_obj_val > best_obj) {
 				best_obj = master_obj_val;
 				best_x = initial_x;
+				best_sub_obj = sub_obj;
 			}
 
 			//check time
@@ -624,7 +650,7 @@ void CuttingPlaneGurobi::solve_build_in(Data data, int budget) {
 
 	ofstream report_results(out_res_csv, ofstream::out);
 	report_results.precision(10);
-	report_results << best_obj << " " << time_for_solve << endl;
+	report_results << best_sub_obj << " " << best_obj << " " << time_for_solve << endl;
 	for (int j = 0; j < data.number_products; ++j)
 		if (best_x[j] == 1)
 			report_results << j << " ";

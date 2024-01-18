@@ -192,6 +192,7 @@ void ConicMcGurobi::solve(Data data, int budget) {
 
     model.set(GRB_DoubleParam_TimeLimit, time_limit - elapsed_seconds.count());
     model.set(GRB_IntParam_MIQCPMethod, 1);
+    //model.set(GRB_DoubleParam_MIPGap, 1e-3);
     model.write("conic.lp");
     //model.set(GRB_IntParam_OutputFlag, 0);
 
@@ -246,7 +247,7 @@ void ConicMcGurobi::solve(Data data, int budget) {
 
     ofstream report_results(out_res_csv, ofstream::out);
     report_results.precision(10);
-    report_results << master_obj << " " << time_for_solve << endl;
+    report_results << obj_value << " " << master_obj << " " << time_for_solve << endl;
     for (int j = 0; j < data.number_products; ++j)
         if (x_sol[j] == 1)
             report_results << j << " ";
