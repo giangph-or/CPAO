@@ -195,6 +195,7 @@ void ConicMcGurobi::solve(Data data, int budget) {
     //model.set(GRB_DoubleParam_MIPGap, 1e-3);
     model.write("conic.lp");
     //model.set(GRB_IntParam_OutputFlag, 0);
+    //model.set(GRB_IntParam_Threads, 1);
 
     model.optimize();
 

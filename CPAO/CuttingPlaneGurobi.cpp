@@ -459,6 +459,7 @@ void CuttingPlaneGurobi::solve_build_in(Data data, int budget) {
 
 	vector<double> initial_y = calculate_y(data, initial_x, alpha);
 	vector<double> initial_z = calculate_z(data, initial_x);
+	vector<double> initial_theta(data.number_customers, 0);
 
 	GRBEnv env = GRBEnv(true);
 	env.start();
@@ -526,7 +527,7 @@ void CuttingPlaneGurobi::solve_build_in(Data data, int budget) {
 	double run_time = time_limit - before_cut.count();
 
 	int num_iterative = 0;
-	double stop_param = 1e-4;
+	double stop_param = 1e-5;
 	double sub_obj = 1.0;
 	double obj_val_cplex = 0.0;
 	double best_sub_obj = 0;
@@ -543,8 +544,15 @@ void CuttingPlaneGurobi::solve_build_in(Data data, int budget) {
 		}
 	}
 
+	int check_theta = 0;
+	for (int i = 0; i < data.number_customers; ++i)
+		if (initial_theta[i] < exp(initial_y[i] + initial_z[i])) {
+			check_theta = 1;
+			break;
+		}
+
 	//Add cut iteratively
-	while (sub_obj > stop_param + obj_val_cplex || check_e_z == 1) {
+	while ((check_theta == 1 || check_e_z == 1) && sub_obj > obj_val_cplex + stop_param) {
 
 		//compute gradient e^{y+z} at initial_x, initial_y, initial_z and set up constraints related to theta
 		for (int i = 0; i < data.number_customers; ++i)
@@ -568,8 +576,10 @@ void CuttingPlaneGurobi::solve_build_in(Data data, int budget) {
 		//model.set(GRB_IntParam_MIPFocus, 3);
 		model.set(GRB_IntParam_FuncPieces, 1);
 		model.set(GRB_DoubleParam_FuncPieceLength, 1e-2);
+		model.set(GRB_DoubleParam_FuncPieceError, 1e-3);
 		//model.set(GRB_DoubleParam_MIPGap, 1e-3);
 		//model.set(GRB_IntParam_OutputFlag, 0);
+		//model.set(GRB_IntParam_Threads, 1);
 
 		model.optimize();
 
@@ -589,12 +599,16 @@ void CuttingPlaneGurobi::solve_build_in(Data data, int budget) {
 			for (int i = 0; i < data.number_customers; ++i) {
 				initial_y[i] = y[i].get(GRB_DoubleAttr_X);
 				initial_z[i] = z[i].get(GRB_DoubleAttr_X);
+				initial_theta[i] = theta[i].get(GRB_DoubleAttr_X);
 			}
 
 			//check the in equation related to theta_i and e^{y_i + z_i} for next iteration
 			sub_obj = 0;
+			check_theta = 0;
 			for (int i = 0; i < data.number_customers; ++i) {
 				sub_obj += exp(initial_y[i] + initial_z[i]);
+				if (initial_theta[i] < exp(initial_y[i] + initial_z[i]))
+					check_theta = 1;
 			}
 			//check the inequations related to e^{-z_i} for next iteration
 			check_e_z = 0;
@@ -614,10 +628,10 @@ void CuttingPlaneGurobi::solve_build_in(Data data, int budget) {
 			master_obj_val = calculate_master_obj(data, initial_x);
 			cout << "Master obj = " << std::setprecision(7) << fixed << master_obj_val << endl;
 
-			if (master_obj_val > best_obj) {
+			if (master_obj_val >= best_obj) {
 				best_obj = master_obj_val;
 				best_x = initial_x;
-				best_sub_obj = sub_obj;
+				best_sub_obj = obj_val_cplex;
 			}
 
 			//check time
