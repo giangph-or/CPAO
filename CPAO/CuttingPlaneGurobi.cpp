@@ -532,27 +532,8 @@ void CuttingPlaneGurobi::solve_build_in(Data data, int budget) {
 	double obj_val_cplex = 0.0;
 	double best_sub_obj = 0;
 
-	int check_e_z = 0;
-	for (int i = 0; i < data.number_customers; ++i) {
-		double sum_x = 0;
-		for (int j = 0; j < data.number_products; ++j)
-			sum_x += initial_x[j] * data.utilities[i][j];
-		sum_x += data.no_purchase[i];
-		if (exp(-initial_z[i]) < sum_x) {
-			check_e_z = 1;
-			break;
-		}
-	}
-
-	int check_theta = 0;
-	for (int i = 0; i < data.number_customers; ++i)
-		if (initial_theta[i] < exp(initial_y[i] + initial_z[i])) {
-			check_theta = 1;
-			break;
-		}
-
 	//Add cut iteratively
-	while ((check_theta == 1 || check_e_z == 1) && sub_obj > obj_val_cplex + stop_param) {
+	while (sub_obj > obj_val_cplex + stop_param) {
 
 		//compute gradient e^{y+z} at initial_x, initial_y, initial_z and set up constraints related to theta
 		for (int i = 0; i < data.number_customers; ++i)
@@ -602,26 +583,11 @@ void CuttingPlaneGurobi::solve_build_in(Data data, int budget) {
 				initial_theta[i] = theta[i].get(GRB_DoubleAttr_X);
 			}
 
-			//check the in equation related to theta_i and e^{y_i + z_i} for next iteration
 			sub_obj = 0;
-			check_theta = 0;
-			for (int i = 0; i < data.number_customers; ++i) {
+			
+			for (int i = 0; i < data.number_customers; ++i)
 				sub_obj += exp(initial_y[i] + initial_z[i]);
-				if (initial_theta[i] < exp(initial_y[i] + initial_z[i]))
-					check_theta = 1;
-			}
-			//check the inequations related to e^{-z_i} for next iteration
-			check_e_z = 0;
-			for (int i = 0; i < data.number_customers; ++i) {
-				double sum_x = 0;
-				for (int j = 0; j < data.number_products; ++j)
-					sum_x += initial_x[j] * data.utilities[i][j];
-				sum_x += data.no_purchase[i];
-				if (exp(-initial_z[i]) < sum_x) {
-					check_e_z = 1;
-					break;
-				}
-			}
+			
 
 			cout << "Sub obj = " << std::setprecision(7) << fixed << sub_obj << endl;
 			cout << "Gurobi obj = " << std::setprecision(7) << fixed << obj_val_cplex << endl;

@@ -2,6 +2,7 @@
 #include "ProblemReader.h"
 #include "CuttingPlaneSolver.h"
 #include "CuttingPlaneGurobi.h"
+#include "CuttingPlaneNCuts.h"
 #include "BCGurobi.h"
 #include "MILPSolver.h"
 #include "MILPGurobi.h"
@@ -31,6 +32,16 @@ int main(int argc, char* argv[]) {
         CuttingPlaneGurobi cpoa(data, time_limit, out_file);
         //cpoa.solve(data, stoi(budget));
         cpoa.solve_build_in(data, stoi(budget));
+    }
+    if (model == "CPNCuts") {
+        /*string out_file = "AO_result_cp//" + instance_name + "_" + no_pay + "_" + budget + ".txt";
+        CuttingPlaneSolver cpoa(data, time_limit, out_file);
+        cpoa.solve(data, stoi(budget));*/
+        //string out_file = "AO_result_cp_gurobi//" + instance_name + "_" + no_pay + "_" + budget + ".txt";
+        string out_file = "AO_result_cp_gurobi_ncuts//" + instance_name + "_" + no_pay + "_" + budget + ".txt";
+        CuttingPlaneNCuts cpoa(data, time_limit, out_file);
+        //cpoa.solve(data, stoi(budget));
+        cpoa.solve_build_in(data, stoi(budget), 10);
     }
     if (model == "BC") {
         /*string out_file = "AO_result_cp//" + instance_name + "_" + no_pay + "_" + budget + ".txt";

@@ -45,6 +45,9 @@
     <ClCompile Include="BCGurobi.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="CuttingPlaneNCut.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ProblemReader.h">
@@ -72,6 +75,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="BCGurobi.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CuttingPlaneNCuts.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

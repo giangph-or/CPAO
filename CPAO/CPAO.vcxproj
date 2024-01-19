@@ -134,6 +134,7 @@
     <ClCompile Include="ConicMcGurobi.cpp" />
     <ClCompile Include="ConicMcSolver.cpp" />
     <ClCompile Include="CuttingPlaneGurobi.cpp" />
+    <ClCompile Include="CuttingPlaneNCut.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MILPGurobi.cpp" />
     <ClCompile Include="MILPSolver.cpp" />
@@ -146,6 +147,7 @@
     <ClInclude Include="ConicMcGurobi.h" />
     <ClInclude Include="ConicMcSolver.h" />
     <ClInclude Include="CuttingPlaneGurobi.h" />
+    <ClInclude Include="CuttingPlaneNCuts.h" />
     <ClInclude Include="MILPGurobi.h" />
     <ClInclude Include="MILPSolver.h" />
     <ClInclude Include="ProblemReader.h" />
