@@ -131,6 +131,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="BCGurobi.cpp" />
+    <ClCompile Include="BCNCuts.cpp" />
     <ClCompile Include="ConicMcGurobi.cpp" />
     <ClCompile Include="ConicMcSolver.cpp" />
     <ClCompile Include="CuttingPlaneGurobi.cpp" />
@@ -144,6 +145,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BCGurobi.h" />
+    <ClInclude Include="BCNCuts.h" />
     <ClInclude Include="ConicMcGurobi.h" />
     <ClInclude Include="ConicMcSolver.h" />
     <ClInclude Include="CuttingPlaneGurobi.h" />

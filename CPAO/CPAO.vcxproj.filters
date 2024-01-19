@@ -48,6 +48,9 @@
     <ClCompile Include="CuttingPlaneNCut.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="BCNCuts.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ProblemReader.h">
@@ -78,6 +81,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="CuttingPlaneNCuts.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BCNCuts.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
