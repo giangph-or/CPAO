@@ -51,6 +51,15 @@
     <ClCompile Include="BCNCuts.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ConicMcGeneral.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="BCGeneral.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CuttingPlaneGeneral.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ProblemReader.h">
@@ -84,6 +93,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="BCNCuts.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ConicMcGeneral.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CuttingPlaneGeneral.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BCGeneral.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

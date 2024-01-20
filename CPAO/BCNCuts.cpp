@@ -15,11 +15,11 @@ BCNCuts::BCNCuts(Data data, double time_limit, string outfile) {
 	this->out_res_csv = outfile;
 }
 
-CB::CB() {
+CBCuts::CBCuts() {
 
 }
 
-CB::CB(GRBVar* varx, GRBVar* vary, GRBVar* varz, GRBVar* vartheta, int p, int c, int cu, vector<double> n, vector<vector<double>> u, vector<vector<double>> r, vector<vector<int>> g) {
+CBCuts::CBCuts(GRBVar* varx, GRBVar* vary, GRBVar* varz, GRBVar* vartheta, int p, int c, int cu, vector<double> n, vector<vector<double>> u, vector<vector<double>> r, vector<vector<int>> g) {
 	cout << "Set up object CB..." << endl;
 	x = varx;
 	y = vary;
@@ -243,21 +243,21 @@ void BCNCuts::solve_build_in(Data data, int budget, int nCuts) {
 		y[i] = model.addVar(log(alpha[i] * data.no_purchase[i]), log(calculate_bound_y(data, budget, i, alpha[i])), 0, GRB_CONTINUOUS, "y_" + to_string(i));
 	//y[i] = model.addVar(-GRB_INFINITY, GRB_INFINITY, 0, GRB_CONTINUOUS, "y_" + to_string(i));
 
-//cout << "Slack variables : u_i\n" << endl;
+	//cout << "Slack variables : u_i\n" << endl;
 	GRBVar* u;
 	u = new GRBVar[data.number_customers];
 	for (int i = 0; i < data.number_customers; ++i)
 		u[i] = model.addVar(alpha[i] * data.no_purchase[i], calculate_bound_y(data, budget, i, alpha[i]), 0, GRB_CONTINUOUS, "u_" + to_string(i));
 	//u[i] = model.addVar(-GRB_INFINITY, GRB_INFINITY, 0, GRB_CONTINUOUS, "u_" + to_string(i));
 
-//cout << "Slack variables : z_i\n" << endl;
+	//cout << "Slack variables : z_i\n" << endl;
 	GRBVar* z;
 	z = new GRBVar[data.number_customers];
 	for (int i = 0; i < data.number_customers; ++i)
 		z[i] = model.addVar(-log(calculate_bound_z(data, budget, i)), -log(data.no_purchase[i]), 0, GRB_CONTINUOUS, "z_" + to_string(i));
 	//z[i] = model.addVar(-GRB_INFINITY, GRB_INFINITY, 0, GRB_CONTINUOUS, "z_" + to_string(i));
 
-//cout << "Slack variables : theta_i\n" << endl;
+	//cout << "Slack variables : theta_i\n" << endl;
 	GRBVar* theta;
 	theta = new GRBVar[nCuts];
 	for (int i = 0; i < nCuts; ++i)
@@ -282,8 +282,12 @@ void BCNCuts::solve_build_in(Data data, int budget, int nCuts) {
 	model.addConstr(capacity <= budget, "ct_budget");
 
 	//compute gradient e^{y+z} at initial_x, initial_y, initial_z and set up constraints related to theta
-	for (int i = 0; i < data.number_customers; ++i)
-		model.addConstr(theta[i] >= exp(initial_y[i] + initial_z[i]) * (1 + y[i] - initial_y[i] + z[i] - initial_z[i]), "ct_sub_gradient_y+z_" + to_string(i));
+	for (int i = 0; i < nCuts; ++i) {
+		GRBLinExpr sum = 0;
+		for (int j = 0; j < group[i].size(); ++j)
+			sum += exp(initial_y[group[i][j]] + initial_z[group[i][j]]) * (1 + y[group[i][j]] - initial_y[group[i][j]] + z[group[i][j]] - initial_z[group[i][j]]);
+		model.addConstr(theta[i] >= sum, "ct_sub_gradient_y+z_" + to_string(i));
+	}
 
 	//compute gradient e^{-z} at initial_x, initial_y, initial_z and set up constraints related to e^{-z}
 	for (int i = 0; i < data.number_customers; ++i) {
@@ -317,7 +321,7 @@ void BCNCuts::solve_build_in(Data data, int budget, int nCuts) {
 	//model.set(GRB_IntParam_OutputFlag, 0);
 	//model.set(GRB_IntParam_Threads, 1);
 
-	CB cb = CB(x, y, z, theta, data.number_products, data.number_customers, nCuts, data.no_purchase, data.utilities, data.revenue, group);
+	CBCuts cb = CBCuts(x, y, z, theta, data.number_products, data.number_customers, nCuts, data.no_purchase, data.utilities, data.revenue, group);
 	model.setCallback(&cb);
 
 	model.optimize();
@@ -373,29 +377,33 @@ void BCNCuts::solve_build_in(Data data, int budget, int nCuts) {
 	report_results.close();
 }
 
-void CB::callback() {
+void CBCuts::callback() {
+	//cout << "Call back..." << endl;
 	try {
+		//cout << "Add cut..." << endl;
 		if (where == GRB_CB_MIPSOL) {
 			double* initial_x = new double[products];
 			double* initial_y = new double[customers];
 			double* initial_z = new double[customers];
-			double* initial_theta = new double[customers];
+			double* initial_theta = new double[cut];
 			initial_x = getSolution(x, products);
 			initial_y = getSolution(y, customers);
 			initial_z = getSolution(z, customers);
 			initial_theta = getSolution(theta, cut);
 
+			//cout << "Check theta" << endl;
 			int check_theta = 0;
 			for (int i = 0; i < cut; ++i) {
 				double sum = 0;
 				for (int j = 0; j < group[i].size(); ++j)
 					sum += exp(initial_y[group[i][j]] + initial_z[group[i][j]]);
-					if (initial_theta[i] < sum) {
-						check_theta = 1;
-						break;
-					}
+				if (initial_theta[i] < sum) {
+					check_theta = 1;
+					break;
+				}
 			}
 
+			//cout << "Check e^z" << endl;
 			int check_z = 0;
 			for (int i = 0; i < customers; ++i) {
 				double sum_x = 0;
@@ -409,7 +417,7 @@ void CB::callback() {
 			}
 
 			if (check_z == 1 || check_theta == 1) {
-				//compute gradient e^{y+z} at initial_x, initial_y, initial_z and set up constraints related to theta
+				//cout << "compute gradient e^ {y + z} at initial_x, initial_y, initial_z and set up constraints related to theta" << endl;
 				for (int i = 0; i < cut; ++i) {
 					GRBLinExpr sum;
 					for (int j = 0; j < group[i].size(); ++j)
@@ -417,7 +425,7 @@ void CB::callback() {
 					addLazy(theta[i] >= sum);
 				}
 
-				//compute gradient e^{-z} at initial_x, initial_y, initial_z and set up constraints related to e^{-z}
+				//cout << "compute gradient e^ {-z} at initial_x, initial_y, initial_z and set up constraints related to e^ {-z}" << endl;
 				for (int i = 0; i < customers; ++i) {
 					GRBLinExpr sum = 0;
 					for (int j = 0; j < products; ++j)
@@ -437,7 +445,7 @@ void CB::callback() {
 	}
 }
 
-double CB::calculate_master_obj(double* x) {
+double CBCuts::calculate_master_obj(double* x) {
 	double obj = 0;
 	for (int i = 0; i < customers; ++i) {
 		double ts = 0, ms = noPay[i];

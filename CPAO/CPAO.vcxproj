@@ -130,10 +130,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="BCGeneral.cpp" />
     <ClCompile Include="BCGurobi.cpp" />
     <ClCompile Include="BCNCuts.cpp" />
+    <ClCompile Include="ConicMcGeneral.cpp" />
     <ClCompile Include="ConicMcGurobi.cpp" />
     <ClCompile Include="ConicMcSolver.cpp" />
+    <ClCompile Include="CuttingPlaneGeneral.cpp" />
     <ClCompile Include="CuttingPlaneGurobi.cpp" />
     <ClCompile Include="CuttingPlaneNCut.cpp" />
     <ClCompile Include="main.cpp" />
@@ -144,10 +147,13 @@
     <ClCompile Include="SolutionReader.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BCGeneral.h" />
     <ClInclude Include="BCGurobi.h" />
     <ClInclude Include="BCNCuts.h" />
+    <ClInclude Include="ConicMcGeneral.h" />
     <ClInclude Include="ConicMcGurobi.h" />
     <ClInclude Include="ConicMcSolver.h" />
+    <ClInclude Include="CuttingPlaneGeneral.h" />
     <ClInclude Include="CuttingPlaneGurobi.h" />
     <ClInclude Include="CuttingPlaneNCuts.h" />
     <ClInclude Include="MILPGurobi.h" />
