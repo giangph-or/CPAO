@@ -6,6 +6,7 @@
 #include "CuttingPlaneGeneral.h"
 #include "BCGurobi.h"
 #include "BCNCuts.h"
+#include "BCGeneral.h"
 #include "MILPSolver.h"
 #include "MILPGurobi.h"
 #include "ConicMcSolver.h"
@@ -77,6 +78,16 @@ int main(int argc, char* argv[]) {
         BCNCuts bcoa(data, time_limit, out_file);
         //cpoa.solve(data, stoi(budget));
         bcoa.solve_build_in(data, stoi(budget), 5);
+    }
+    if (model == "BCGeneral") {
+        /*string out_file = "AO_result_cp//" + instance_name + "_" + no_pay + "_" + budget + ".txt";
+        CuttingPlaneSolver cpoa(data, time_limit, out_file);
+        cpoa.solve(data, stoi(budget));*/
+        //string out_file = "AO_result_cp_gurobi//" + instance_name + "_" + no_pay + "_" + budget + ".txt";
+        string out_file = "AO_result_bc_gurobi_general//" + instance_name + "_" + no_pay + "_" + budget + ".txt";
+        BCGeneral bcoa(data, time_limit, out_file);
+        //cpoa.solve(data, stoi(budget));
+        bcoa.solve_build_in(data, 5);
     }
     if (model == "MILP") {
         //string out_file = "AO_result_milp//" + instance_name + "_" + no_pay + "_" + budget + ".txt";

@@ -130,7 +130,7 @@ vector<vector<double>> ConicMcGeneral::lb_in(Data data) {
         for (int j = 0; j < data.number_products; ++j) {
             double lb_total = lb_in_total_cap(data, i, j);
             double lb_cap = lb_in_set_cap(data, i, j);
-            if (lb_total <= lb_cap)
+            if (lb_total > lb_cap)
                 lb[i][j] = lb_total;
             else
                 lb[i][j] = lb_cap;
@@ -148,7 +148,7 @@ vector<vector<double>> ConicMcGeneral::lb_notin(Data data) {
         for (int j = 0; j < data.number_products; ++j) {
             double lb_total = lb_notin_total_cap(data, i, j);
             double lb_cap = lb_notin_set_cap(data, i, j);
-            if (lb_total <= lb_cap)
+            if (lb_total > lb_cap)
                 lb[i][j] = lb_total;
             else
                 lb[i][j] = lb_cap;
