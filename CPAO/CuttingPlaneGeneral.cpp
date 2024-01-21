@@ -394,7 +394,7 @@ void CuttingPlaneGeneral::solve_build_in(Data data, int nCuts) {
 	double run_time = time_limit - before_cut.count();
 
 	int num_iterative = 0;
-	double stop_param = 1e-5;
+	double stop_param = 1e-4;
 	double sub_obj = 1.0;
 	double obj_val_cplex = 0.0;
 	double best_sub_obj = 0;
