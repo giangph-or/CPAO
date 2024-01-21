@@ -24,9 +24,12 @@ public:
     char var_name[1000];
     ConicMcGeneral();
     ConicMcGeneral(Data data, double time_limit, string outfile);
-    vector<int> find_bound_y_total_cap(Data data, int i);
-    vector<int> find_bound_y_set_cap(Data data, int i);
-    double calculate_sum_utility(Data data, int budget, int i);
+    double lb_in_total_cap(Data data, int i, int j);
+    double lb_in_set_cap(Data data, int i, int j);
+    double lb_notin_total_cap(Data data, int i, int j);
+    double lb_notin_set_cap(Data data, int i, int j);
     double calculate_master_obj(Data data, vector<int> x);
+    vector<vector<double>> lb_in(Data data);
+    vector<vector<double>> lb_notin(Data data);
     void solve(Data data);
 };

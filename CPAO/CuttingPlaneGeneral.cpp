@@ -133,19 +133,48 @@ vector<int> CuttingPlaneGeneral::greedy(Data data, vector<double> alpha) {
 	return chosen;
 }
 
-double CuttingPlaneGeneral::calculate_bound_y(Data data, int budget, int i, double alpha) {
+double CuttingPlaneGeneral::calculate_bound_y_total(Data data, int i, double alpha) {
 	double sum = 0;
-	vector<double> u(data.number_products);
+	vector<pair<double, int>> u(data.number_products);
 	for (int j = 0; j < data.number_products; ++j)
-		u[j] = (alpha - data.revenue[i][j]) * data.utilities[i][j];
+		u[j] = make_pair(data.utilities[i][j], j);
 
-	sort(u.begin(), u.end(), greater<double>());
+	sort(u.begin(), u.end(), greater<pair<double, int>>());
 
-	for (int j = 0; j < budget; ++j)
-		sum += u[j];
-	sum += alpha * data.no_purchase[i];
+	double total_cost = 0;
+	double current_capacity = 0;
+	double total_cap_obj = 0;
+	int count = 0;
+	while (count < data.number_products) {
+		if (current_capacity + data.cost[u[count].second] <= data.total_capacity) {
+			current_capacity += data.cost[u[count].second];
+			total_cap_obj += u[count].first * (alpha - data.revenue[i][count]);
+		}
+		count++;
+	}
 
-	return sum;
+	return sum + alpha * data.no_purchase[i];
+}
+
+double CuttingPlaneGeneral::calculate_bound_y_set(Data data, int i, double alpha) {
+	vector<pair<double, int>> u(data.number_products);
+	for (int j = 0; j < data.number_products; ++j)
+		u[j] = make_pair(data.utilities[i][j], j);
+
+	sort(u.begin(), u.end(), greater<pair<double, int>>());
+
+	double set_cap_obj = 0;
+	vector<int> set_capacity(data.number_sets, 0);
+	int count = 0;
+	while (count < data.number_products) {
+		if (set_capacity[data.in_set[count]] + 1 <= data.capacity_each_set) {
+			set_capacity[data.in_set[count]]++;
+			set_cap_obj += u[count].first * (alpha - data.revenue[i][count]);
+		}
+		count++;
+	}
+
+	return set_cap_obj + alpha * data.no_purchase[i];
 }
 
 double CuttingPlaneGeneral::calculate_bound_z(Data data, int budget, int i) {
@@ -163,7 +192,7 @@ double CuttingPlaneGeneral::calculate_bound_z(Data data, int budget, int i) {
 	return sum;
 }
 
-double CuttingPlaneGeneral::calculate_optimal_bound_y(Data data, int budget, int i, double alpha) {
+double CuttingPlaneGeneral::calculate_optimal_bound_y(Data data, int i, double alpha) {
 	GRBEnv env = GRBEnv(true);
 	env.start();
 
@@ -176,9 +205,9 @@ double CuttingPlaneGeneral::calculate_optimal_bound_y(Data data, int budget, int
 	//Budget constraint
 	GRBLinExpr capacity = 0;
 	for (int j = 0; j < data.number_products; ++j) {
-		capacity += x[j];
+		capacity += data.cost[j] * x[j];
 	}
-	model.addConstr(capacity <= budget);
+	model.addConstr(capacity <= data.total_capacity);
 
 	GRBLinExpr obj;
 	for (int j = 0; j < data.number_products; ++j)
@@ -187,7 +216,7 @@ double CuttingPlaneGeneral::calculate_optimal_bound_y(Data data, int budget, int
 
 	model.optimize();
 
-	return model.get(GRB_DoubleAttr_ObjVal);
+	return model.get(GRB_DoubleAttr_ObjVal) + data.no_purchase[i];
 }
 
 void CuttingPlaneGeneral::solve_build_in(Data data, int nCuts) {
@@ -240,15 +269,19 @@ void CuttingPlaneGeneral::solve_build_in(Data data, int nCuts) {
 
 	//cout << "Slack variables : y_i\n" << endl;
 	GRBVar* y;
-	y = new GRBVar[data.number_customers];
-	for (int i = 0; i < data.number_customers; ++i)
-		y[i] = model.addVar(log(alpha[i] * data.no_purchase[i]), log(calculate_bound_y(data, data.number_products, i, alpha[i])), 0, GRB_CONTINUOUS, "y_" + to_string(i));
-
-	//cout << "Slack variables : u_i\n" << endl;
 	GRBVar* u;
+	y = new GRBVar[data.number_customers];
 	u = new GRBVar[data.number_customers];
-	for (int i = 0; i < data.number_customers; ++i)
-		u[i] = model.addVar(alpha[i] * data.no_purchase[i], calculate_bound_y(data, data.number_customers, i, alpha[i]), 0, GRB_CONTINUOUS, "u_" + to_string(i));
+	for (int i = 0; i < data.number_customers; ++i) {
+		double bound;
+		double bound_total = calculate_optimal_bound_y(data, i, alpha[i]);
+		double bound_set = calculate_bound_y_set(data, i, alpha[i]);
+		if (bound_total >= bound_set) bound = bound_set;
+		else bound = bound_total;
+		cout << bound << endl;
+		y[i] = model.addVar(log(alpha[i] * data.no_purchase[i]), log(bound), 0, GRB_CONTINUOUS, "y_" + to_string(i));
+		u[i] = model.addVar(alpha[i] * data.no_purchase[i], bound, 0, GRB_CONTINUOUS, "u_" + to_string(i));
+	}
 
 	//cout << "Slack variables : z_i\n" << endl;
 	GRBVar* z;

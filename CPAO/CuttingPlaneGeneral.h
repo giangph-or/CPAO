@@ -29,9 +29,10 @@ public:
     double calculate_original_obj(Data data, vector<int> x, vector<double> alpha);
     double calculate_master_obj(Data data, vector<int> x);
     double calculate_original_obj_tmp(Data data, vector<int> x, vector<double> alpha, int i);
-    double calculate_bound_y(Data data, int budget, int i, double alpha);
+    double calculate_bound_y_total(Data data, int i, double alpha);
+    double calculate_bound_y_set(Data data, int i, double alpha);
     double calculate_bound_z(Data data, int budget, int i);
-    double calculate_optimal_bound_y(Data data, int budget, int i, double alpha);
+    double calculate_optimal_bound_y(Data data, int i, double alpha);
     vector<int> greedy(Data data, vector<double> alpha);
     void solve_build_in(Data data, int nCuts);
 };

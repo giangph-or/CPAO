@@ -12,9 +12,62 @@ ConicMcGeneral::ConicMcGeneral(Data data, double time_limit, string outfile) {
     this->out_res_csv = outfile;
 }
 
-vector<int> ConicMcGeneral::find_bound_y_total_cap(Data data, int i) {
-    auto start = chrono::steady_clock::now();
-    vector<int> chosen(data.number_products, 0);
+double ConicMcGeneral::lb_in_total_cap(Data data, int i, int k) {
+    double current_capacity = data.cost[k];
+
+    vector<pair<double, int>> u(data.number_products);
+    for (int j = 0; j < data.number_products; ++j)
+        u[j] = make_pair(data.utilities[i][j], j);
+
+    sort(u.begin(), u.end(), greater<pair<double, int>>());
+    for (int j = 0; j < data.number_products; ++j)
+        if (u[j].second == k) {
+            u.erase(u.begin() + j);
+            break;
+        }
+
+    double total_cap_obj = data.utilities[i][k];
+    int count = 0;
+    while (count < data.number_products) {
+        if (current_capacity + data.cost[u[count].second] <= data.total_capacity) {
+            current_capacity += data.cost[u[count].second];
+            total_cap_obj += u[count].first;
+        }
+        count++;
+    }
+
+    return total_cap_obj;
+}
+
+double ConicMcGeneral::lb_in_set_cap(Data data, int i, int k) {
+    double set_cap_obj = data.utilities[i][k];
+
+    vector<pair<double, int>> u(data.number_products);
+    for (int j = 0; j < data.number_products; ++j)
+        u[j] = make_pair(data.utilities[i][j], j);
+
+    sort(u.begin(), u.end(), greater<pair<double, int>>());
+    for (int j = 0; j < data.number_products; ++j)
+        if (u[j].second == k) {
+            u.erase(u.begin() + j);
+            break;
+        }
+
+    vector<int> set_capacity(data.number_sets, 0);
+    set_capacity[data.in_set[k]] = 1;
+    int count = 0;
+    while (count < data.number_products) {
+        if (set_capacity[data.in_set[count]] + 1 <= data.capacity_each_set) {
+            set_capacity[data.in_set[count]]++;
+            set_cap_obj += u[count].first;
+        }
+        count++;
+    }
+
+    return set_cap_obj;
+}
+
+double ConicMcGeneral::lb_notin_total_cap(Data data, int i, int k) {
     double current_capacity = 0;
 
     vector<pair<double, int>> u(data.number_products);
@@ -22,61 +75,86 @@ vector<int> ConicMcGeneral::find_bound_y_total_cap(Data data, int i) {
         u[j] = make_pair(data.utilities[i][j], j);
 
     sort(u.begin(), u.end(), greater<pair<double, int>>());
+    for (int j = 0; j < data.number_products; ++j)
+        if (u[j].second == k) {
+            u.erase(u.begin() + j);
+            break;
+        }
+
     double total_cap_obj = 0;
     int count = 0;
-    while (true) {
+    while (count < data.number_products) {
         if (current_capacity + data.cost[u[count].second] <= data.total_capacity) {
-            chosen[u[count].second] = 1;
             current_capacity += data.cost[u[count].second];
-            total_cap_obj += u[count].first;
-            count++;
+            total_cap_obj += u[count].first; 
         }
-        else break;
+        count++;
     }
 
-    return chosen;
+    return total_cap_obj;
 }
 
-vector<int> ConicMcGeneral::find_bound_y_set_cap(Data data, int i) {
-    auto start = chrono::steady_clock::now();
+double ConicMcGeneral::lb_notin_set_cap(Data data, int i, int k) {
+    double set_cap_obj = 0;
 
     vector<pair<double, int>> u(data.number_products);
     for (int j = 0; j < data.number_products; ++j)
         u[j] = make_pair(data.utilities[i][j], j);
 
     sort(u.begin(), u.end(), greater<pair<double, int>>());
+    for (int j = 0; j < data.number_products; ++j)
+        if (u[j].second == k) {
+            u.erase(u.begin() + j);
+            break;
+        }
 
-    double set_cap_obj = 0;
     vector<int> set_capacity(data.number_sets, 0);
-    vector<int> chosen_set(data.number_products, 0);
     int count = 0;
-    while (true) {
+    while (count < data.number_products) {
         if (set_capacity[data.in_set[count]] + 1 <= data.capacity_each_set) {
-            chosen_set[u[count].second] = 1;
             set_capacity[data.in_set[count]]++;
             set_cap_obj += u[count].first;
-            count++;
         }
-        else break;
-    }
-
-    return chosen_set;
-}
-
-double ConicMcGeneral::calculate_sum_utility(Data data, int budget, int i) {
-    vector<pair<double, int>> u(data.number_products);
-    for (int j = 0; j < data.number_products; ++j) {
-        u[j].first = data.utilities[i][j];
-        u[j].second = j;
-    }
-    sort(u.begin(), u.end(), greater<pair<double, int>>());
-    double sum = 0;
-    int k = 0, count = 0;
-    while (count < budget) {
-        sum += u[count].first;
         count++;
     }
-    return sum;
+
+    return set_cap_obj;
+}
+
+vector<vector<double>> ConicMcGeneral::lb_in(Data data) {
+    vector<vector<double>> lb(data.number_customers);
+    for (int i = 0; i < data.number_customers; ++i)
+        lb[i].resize(data.number_products, 0);
+    
+    for (int i = 0; i < data.number_customers; ++i)
+        for (int j = 0; j < data.number_products; ++j) {
+            double lb_total = lb_in_total_cap(data, i, j);
+            double lb_cap = lb_in_set_cap(data, i, j);
+            if (lb_total <= lb_cap)
+                lb[i][j] = lb_total;
+            else
+                lb[i][j] = lb_cap;
+        }
+
+    return lb;
+}
+
+vector<vector<double>> ConicMcGeneral::lb_notin(Data data) {
+    vector<vector<double>> lb(data.number_customers);
+    for (int i = 0; i < data.number_customers; ++i)
+        lb[i].resize(data.number_products, 0);
+
+    for (int i = 0; i < data.number_customers; ++i)
+        for (int j = 0; j < data.number_products; ++j) {
+            double lb_total = lb_notin_total_cap(data, i, j);
+            double lb_cap = lb_notin_set_cap(data, i, j);
+            if (lb_total <= lb_cap)
+                lb[i][j] = lb_total;
+            else
+                lb[i][j] = lb_cap;
+        }
+
+    return lb;
 }
 
 double ConicMcGeneral::calculate_master_obj(Data data, vector<int> x) {
@@ -171,12 +249,15 @@ void ConicMcGeneral::solve(Data data) {
         for (int j = 0; j < data.number_products; ++j)
             model.addConstr(z[i][j] >= y[i] - (1 - x[j]) * (1.0 / data.no_purchase[i]));
 
+    vector<vector<double>> bound_in = lb_in(data);
+    vector<vector<double>> bound_notin = lb_notin(data);
+
     //McCornick constraints
-    //for (int i = 0; i < data.number_customers; ++i)
-    //    for (int j = 0; j < data.number_products; ++j){
-    //        model.addConstr(z[i][j] >= x[j] * 1.0 / (data.no_purchase[i] + bound[i]));
-    //        model.addConstr(z[i][j] <= y[i] - (1 - x[j]) * 1.0 / (data.no_purchase[i] + bound[i]));
-    //    }
+    for (int i = 0; i < data.number_customers; ++i)
+        for (int j = 0; j < data.number_products; ++j){
+            model.addConstr(z[i][j] >= x[j] * 1.0 / (data.no_purchase[i] + bound_in[i][j]));
+            model.addConstr(z[i][j] <= y[i] - (1 - x[j]) * 1.0 / (data.no_purchase[i] + bound_notin[i][j]));
+        }
 
     //cout << "Budget constraint\n" << endl;
     //Total capacity constraint
