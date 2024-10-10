@@ -15,94 +15,52 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ProblemReader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Conic.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Submodular.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BCConic.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BCMulticut.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BCMulticutSen.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BCSubmodular.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
     <ClCompile Include="ProblemReader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Conic.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="CuttingPlaneSolver.cpp">
+    <ClCompile Include="Submodular.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="MILPSolver.cpp">
+    <ClCompile Include="BCConic.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ConicMcSolver.cpp">
+    <ClCompile Include="BCMulticut.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="SolutionReader.cpp">
+    <ClCompile Include="BCMulticutSen.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ConicMcGurobi.cpp">
+    <ClCompile Include="BCSubmodular.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="CuttingPlaneGurobi.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="MILPGurobi.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="BCGurobi.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="CuttingPlaneNCut.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="BCNCuts.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ConicMcGeneral.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="BCGeneral.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="CuttingPlaneGeneral.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="ProblemReader.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="CuttingPlaneSolver.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="MILPSolver.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ConicMcSolver.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SolutionReader.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ConicMcGurobi.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="CuttingPlaneGurobi.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="MILPGurobi.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="BCGurobi.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="CuttingPlaneNCuts.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="BCNCuts.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ConicMcGeneral.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="CuttingPlaneGeneral.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="BCGeneral.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
 </Project>

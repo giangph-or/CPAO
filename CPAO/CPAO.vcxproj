@@ -18,6 +18,25 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="BCConic.h" />
+    <ClInclude Include="BCMulticut.h" />
+    <ClInclude Include="BCMulticutSen.h" />
+    <ClInclude Include="BCSubmodular.h" />
+    <ClInclude Include="Conic.h" />
+    <ClInclude Include="ProblemReader.h" />
+    <ClInclude Include="Submodular.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="BCConic.cpp" />
+    <ClCompile Include="BCMulticut.cpp" />
+    <ClCompile Include="BCMulticutSen.cpp" />
+    <ClCompile Include="BCSubmodular.cpp" />
+    <ClCompile Include="Conic.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="ProblemReader.cpp" />
+    <ClCompile Include="Submodular.cpp" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
@@ -129,39 +148,6 @@
       <AdditionalDependencies>cplex2211.lib;ilocplex.lib;concert.lib;gurobi_c++md2017.lib;gurobi110.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="BCGeneral.cpp" />
-    <ClCompile Include="BCGurobi.cpp" />
-    <ClCompile Include="BCNCuts.cpp" />
-    <ClCompile Include="ConicMcGeneral.cpp" />
-    <ClCompile Include="ConicMcGurobi.cpp" />
-    <ClCompile Include="ConicMcSolver.cpp" />
-    <ClCompile Include="CuttingPlaneGeneral.cpp" />
-    <ClCompile Include="CuttingPlaneGurobi.cpp" />
-    <ClCompile Include="CuttingPlaneNCut.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="MILPGurobi.cpp" />
-    <ClCompile Include="MILPSolver.cpp" />
-    <ClCompile Include="ProblemReader.cpp" />
-    <ClCompile Include="CuttingPlaneSolver.cpp" />
-    <ClCompile Include="SolutionReader.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="BCGeneral.h" />
-    <ClInclude Include="BCGurobi.h" />
-    <ClInclude Include="BCNCuts.h" />
-    <ClInclude Include="ConicMcGeneral.h" />
-    <ClInclude Include="ConicMcGurobi.h" />
-    <ClInclude Include="ConicMcSolver.h" />
-    <ClInclude Include="CuttingPlaneGeneral.h" />
-    <ClInclude Include="CuttingPlaneGurobi.h" />
-    <ClInclude Include="CuttingPlaneNCuts.h" />
-    <ClInclude Include="MILPGurobi.h" />
-    <ClInclude Include="MILPSolver.h" />
-    <ClInclude Include="ProblemReader.h" />
-    <ClInclude Include="CuttingPlaneSolver.h" />
-    <ClInclude Include="SolutionReader.h" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
