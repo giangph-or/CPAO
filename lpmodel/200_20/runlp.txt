@@ -1,0 +1,3 @@
+model = read("200_20_set1_5.lp")
+
+model.optimize()

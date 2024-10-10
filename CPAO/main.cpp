@@ -58,10 +58,6 @@ int main(int argc, char* argv[]) {
     }
 
     if (model == "MILP") {
-        //string out_file = "result_conic//" + instance_name + "_" + no_pay + "_" + budget + ".txt";
-        //Conic conicmcoa(data_Sen, time_limit, out_file);
-        //conicmcoa.solve(data_Sen);
-
         //Run from .lp file
         string budget = argv[4];
         instance_file = "Sen_data//" + instance_name + ".dat";
@@ -95,90 +91,58 @@ int main(int argc, char* argv[]) {
     }
 
     if (model == "CPLi") {
-        string out_file = "result_submodular//" + instance_name + "_" + no_pay + "_" + budget + ".txt";
+        //string subBudget = argv[5];
+        string out_file = "result_cpli//" + instance_name + "_" + no_pay + "_" + budget + ".txt";
         CuttingPlane suboa(data_Sen, time_limit, out_file);
         suboa.solve_milp(data_Sen);
-
-        //string subBudget = argv[5];
-        //string out_file = "result_submodular//" + instance_name + "_" + no_pay + "_" + budget + "_" + subBudget + ".txt";
-        //CuttingPlane suboa(data_Sen, time_limit, out_file);
-        //suboa.solve_milp(data_Sen);
     }
 
     if (model == "CPBi") {
-        string out_file = "result_subconic//" + instance_name + "_" + no_pay + "_" + budget + ".txt";
+        //string subBudget = argv[5];
+        string out_file = "result_cpbi//" + instance_name + "_" + no_pay + "_" + budget + ".txt";
         CuttingPlane suboa(data_Sen, time_limit, out_file);
         suboa.solve_bi(data_Sen);
-
-        //string subBudget = argv[5];
-        //string out_file = "result_subconic//" + instance_name + "_" + no_pay + "_" + budget + "_" + subBudget + ".txt";
-        //CuttingPlane suboa(data_Sen, time_limit, out_file);
-        //suboa.solve__bi(data_Sen);
     }
 
     if (model == "CPLiSB") {
-        string out_file = "result_submodular//" + instance_name + "_" + no_pay + "_" + budget + ".txt";
+        //string subBudget = argv[5];
+        string out_file = "result_cplisb//" + instance_name + "_" + no_pay + "_" + budget + ".txt";
         CuttingPlane suboa(data_Sen, time_limit, out_file);
         suboa.solve_multicut_milp(data_Sen, 20);
-
-        //string subBudget = argv[5];
-        //string out_file = "result_submodular//" + instance_name + "_" + no_pay + "_" + budget + "_" + subBudget + ".txt";
-        //CuttingPlane suboa(data_Sen, time_limit, out_file);
-        //suboa.solve_multicut_milp(data_Sen, 20);
     }
 
     if (model == "CPBiSB") {
-        string out_file = "result_subconic//" + instance_name + "_" + no_pay + "_" + budget + ".txt";
+        //string subBudget = argv[5];
+        string out_file = "result_cpbisb//" + instance_name + "_" + no_pay + "_" + budget + ".txt";
         CuttingPlane suboa(data_Sen, time_limit, out_file);
         suboa.solve_multicut_bi(data_Sen, 20);
-
-        //string subBudget = argv[5];
-        //string out_file = "result_subconic//" + instance_name + "_" + no_pay + "_" + budget + "_" + subBudget + ".txt";
-        //CuttingPlane suboa(data_Sen, time_limit, out_file);
-        //suboa.solve_multicut_bi(data_Sen, 20);
     }
 
     if (model == "BCLi") {
-        string out_file = "result_bcsubmodular//" + instance_name + "_" + no_pay + "_" + budget + ".txt";
+        //string subBudget = argv[5];
+        string out_file = "result_bcli//" + instance_name + "_" + no_pay + "_" + budget + ".txt";
         BranchandCut bcsuboa(data_Sen, time_limit, out_file);
         bcsuboa.solve_multicut_milp(data_Sen);
-
-        //string subBudget = argv[5];
-        //string out_file = "result_bcsubmodular//" + instance_name + "_" + no_pay + "_" + budget + "_" + subBudget + ".txt";
-        //BranchandCut bcsuboa(data_Sen, time_limit, out_file);
-        //bcsuboa.solve_multicut_milp(data_Sen);
     }
 
     if (model == "BCBi") {
-        string out_file = "result_bcconic//" + instance_name + "_" + no_pay + "_" + budget + ".txt";
+        //string subBudget = argv[5];
+        string out_file = "result_bcbi//" + instance_name + "_" + no_pay + "_" + budget + ".txt";
         BranchandCut bcconic(data_Sen, time_limit, out_file);
         bcconic.solve_multicut_bi(data_Sen);
-
-        //string subBudget = argv[5];
-        //string out_file = "result_bcconic//" + instance_name + "_" + no_pay + "_" + budget + "_" + subBudget + ".txt";
-        //BCConic bcconic(data_Sen, time_limit, out_file);
-        //bcconic.solve_multicut_bi(data_Sen);
     }
 
     if (model == "BCLiSB") {
-        string out_file = "result_bcmultimilp//" + instance_name + "_" + no_pay + "_" + budget + ".txt";
+        //string subBudget = argv[5];
+        string out_file = "result_bclisb//" + instance_name + "_" + no_pay + "_" + budget + ".txt";
         BCMulticut bcmulti(data_Sen, time_limit, out_file);
         bcmulti.solve_multicut_milp(data_Sen, 20);
-
-        //string subBudget = argv[5];
-        //string out_file = "result_bcmultimilp//" + instance_name + "_" + no_pay + "_" + budget + "_" + subBudget + ".txt";
-        //BCMulticut bcmulti(data_Sen, time_limit, out_file);
-        //bcmulti.solve_multicut_milp(data_Sen, 20);
     }
 
     if (model == "BCBiSB") {
-        string out_file = "result_bcmulticonic//" + instance_name + "_" + no_pay + "_" + budget + ".txt";
+        //string subBudget = argv[5];
+        string out_file = "result_bcbisb//" + instance_name + "_" + no_pay + "_" + budget + ".txt";
         BCMulticut bcmulti(data_Sen, time_limit, out_file);
         bcmulti.solve_multicut_bi(data_Sen, 20);
-
-        //string subBudget = argv[5];
-        //string out_file = "result_bcmulticonic//" + instance_name + "_" + no_pay + "_" + budget + "_" + subBudget + ".txt";
-        //BCMulticut bcmulti(data_Sen, time_limit, out_file);
-        //bcmulti.solve_multicut_bi(data_Sen, 20);
     }
 }
