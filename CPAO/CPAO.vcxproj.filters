@@ -21,19 +21,13 @@
     <ClInclude Include="Conic.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Submodular.h">
+    <ClInclude Include="CuttingPlane.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="BCConic.h">
+    <ClInclude Include="BranchandCut.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="BCMulticut.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="BCMulticutSen.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="BCSubmodular.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -47,19 +41,13 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Submodular.cpp">
+    <ClCompile Include="CuttingPlane.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="BCConic.cpp">
+    <ClCompile Include="BranchandCut.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="BCMulticut.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="BCMulticutSen.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="BCSubmodular.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

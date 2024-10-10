@@ -19,23 +19,19 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="BCConic.h" />
+    <ClInclude Include="BranchandCut.h" />
     <ClInclude Include="BCMulticut.h" />
-    <ClInclude Include="BCMulticutSen.h" />
-    <ClInclude Include="BCSubmodular.h" />
     <ClInclude Include="Conic.h" />
     <ClInclude Include="ProblemReader.h" />
-    <ClInclude Include="Submodular.h" />
+    <ClInclude Include="CuttingPlane.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="BCConic.cpp" />
+    <ClCompile Include="BranchandCut.cpp" />
     <ClCompile Include="BCMulticut.cpp" />
-    <ClCompile Include="BCMulticutSen.cpp" />
-    <ClCompile Include="BCSubmodular.cpp" />
     <ClCompile Include="Conic.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="ProblemReader.cpp" />
-    <ClCompile Include="Submodular.cpp" />
+    <ClCompile Include="CuttingPlane.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>

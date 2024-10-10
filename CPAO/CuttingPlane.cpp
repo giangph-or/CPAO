@@ -1,21 +1,21 @@
-#include "Submodular.h"
+#include "CuttingPlane.h"
 #include <chrono>
 #include <algorithm>
 #include <sstream>
 #include <cstdlib>
 #include <cassert>
 
-Submodular::Submodular() {
+CuttingPlane::CuttingPlane() {
 
 }
 
-Submodular::Submodular(Data data, double time_limit, string outfile) {
+CuttingPlane::CuttingPlane(Data data, double time_limit, string outfile) {
 	this->data = data;
 	this->time_limit = time_limit;
 	this->out_res_csv = outfile;
 }
 
-vector<double> Submodular::calculate_denominator(Data data, vector<int> x) {
+vector<double> CuttingPlane::calculate_denominator(Data data, vector<int> x) {
 	vector<double> denominator(data.number_customers, 0);
 	for (int i = 0; i < data.number_customers; ++i) {
 		denominator[i] += data.no_purchase[i];
@@ -26,7 +26,7 @@ vector<double> Submodular::calculate_denominator(Data data, vector<int> x) {
 	return denominator;
 }
 
-double Submodular::calculate_z(Data data, vector<double> alpha, vector<double> denominator) {
+double CuttingPlane::calculate_z(Data data, vector<double> alpha, vector<double> denominator) {
 	double z = 0;
 	for (int i = 0; i < data.number_customers; ++i)
 		z += alpha[i] * data.no_purchase[i] / denominator[i];
@@ -34,7 +34,7 @@ double Submodular::calculate_z(Data data, vector<double> alpha, vector<double> d
 	return z;
 }
 
-double Submodular::calculate_optimal_bound_denominator(Data data, int i) {
+double CuttingPlane::calculate_optimal_bound_denominator(Data data, int i) {
 	GRBEnv env = GRBEnv(true);
 	env.start();
 
@@ -65,7 +65,7 @@ double Submodular::calculate_optimal_bound_denominator(Data data, int i) {
 	return model.get(GRB_DoubleAttr_ObjVal) + data.no_purchase[i];
 }
 
-double  Submodular::calculate_original_obj(Data data, vector<int> x, vector<double> alpha) {
+double  CuttingPlane::calculate_original_obj(Data data, vector<int> x, vector<double> alpha) {
 	double obj = 0;
 	for (int i = 0; i < data.number_customers; ++i) {
 		double ts = alpha[i] * data.no_purchase[i], ms = data.no_purchase[i];
@@ -79,7 +79,7 @@ double  Submodular::calculate_original_obj(Data data, vector<int> x, vector<doub
 	return obj;
 }
 
-double Submodular::calculate_master_obj(Data data, vector<int> x) {
+double CuttingPlane::calculate_master_obj(Data data, vector<int> x) {
 	double obj = 0;
 	for (int i = 0; i < data.number_customers; ++i) {
 		double ts = 0, ms = data.no_purchase[i];
@@ -93,7 +93,7 @@ double Submodular::calculate_master_obj(Data data, vector<int> x) {
 	return obj;
 }
 
-double Submodular::calculate_original_obj_tmp(Data data, vector<int> x, vector<double> alpha, int candidate) {
+double CuttingPlane::calculate_original_obj_tmp(Data data, vector<int> x, vector<double> alpha, int candidate) {
 	double obj = 0;
 	for (int i = 0; i < data.number_customers; ++i) {
 		double ts = alpha[i] * data.no_purchase[i] + (alpha[i] - data.revenue[i][candidate]) * data.utilities[i][candidate],
@@ -109,7 +109,7 @@ double Submodular::calculate_original_obj_tmp(Data data, vector<int> x, vector<d
 	return obj;
 }
 
-vector<int> Submodular::greedy(Data data, vector<double> alpha) {
+vector<int> CuttingPlane::greedy(Data data, vector<double> alpha) {
 	auto start = chrono::steady_clock::now();
 	vector<int> chosen(data.number_products, 0);
 	double obj = calculate_original_obj(data, chosen, alpha);
@@ -174,7 +174,7 @@ vector<int> Submodular::greedy(Data data, vector<double> alpha) {
 	return chosen;
 }
 
-vector<int> Submodular::greedy_general(Data data, vector<double> alpha) {
+vector<int> CuttingPlane::greedy_general(Data data, vector<double> alpha) {
 	auto start = chrono::steady_clock::now();
 	vector<int> chosen(data.number_products, 0);
 	double obj = calculate_original_obj(data, chosen, alpha);
@@ -232,7 +232,7 @@ vector<int> Submodular::greedy_general(Data data, vector<double> alpha) {
 	return chosen;
 }
 
-vector<vector<double>> Submodular::calculate_bound_y_in(Data data) {
+vector<vector<double>> CuttingPlane::calculate_bound_y_in(Data data) {
 	vector<vector<double>> lb_in(data.number_customers);
 	for (int i = 0; i < data.number_customers; ++i)
 		lb_in[i].resize(data.number_products);
@@ -271,7 +271,7 @@ vector<vector<double>> Submodular::calculate_bound_y_in(Data data) {
 	return lb_in;
 }
 
-vector<vector<double>> Submodular::calculate_bound_y_notin(Data data) {
+vector<vector<double>> CuttingPlane::calculate_bound_y_notin(Data data) {
 	vector<vector<double>> lb_notin(data.number_customers);
 	for (int i = 0; i < data.number_customers; ++i)
 		lb_notin[i].resize(data.number_products);
@@ -309,7 +309,7 @@ vector<vector<double>> Submodular::calculate_bound_y_notin(Data data) {
 	return lb_notin;
 }
 
-vector<vector<double>> Submodular::subset_bound_y_in(Data data) {
+vector<vector<double>> CuttingPlane::subset_bound_y_in(Data data) {
 	vector<vector<double>> lb_in(data.number_customers);
 	for (int i = 0; i < data.number_customers; ++i)
 		lb_in[i].resize(data.number_products);
@@ -341,7 +341,7 @@ vector<vector<double>> Submodular::subset_bound_y_in(Data data) {
 	return lb_in;
 }
 
-vector<vector<double>> Submodular::subset_bound_y_notin(Data data) {
+vector<vector<double>> CuttingPlane::subset_bound_y_notin(Data data) {
 	vector<vector<double>> lb_notin(data.number_customers);
 	for (int i = 0; i < data.number_customers; ++i)
 		lb_notin[i].resize(data.number_products);
@@ -372,283 +372,7 @@ vector<vector<double>> Submodular::subset_bound_y_notin(Data data) {
 	return lb_notin;
 }
 
-void Submodular::solve_multicut_psi(Data data) {
-	//auto start = chrono::steady_clock::now();
-
-	vector<double> alpha(data.number_customers, -1);
-	for (int i = 0; i < data.number_customers; ++i)
-		for (int j = 0; j < data.number_products; ++j)
-			if (data.revenue[i][j] > alpha[i])
-				alpha[i] = data.revenue[i][j];
-
-	vector<vector<double>> bound_in = calculate_bound_y_in(data);
-	vector<vector<double>> bound_notin = calculate_bound_y_notin(data);
-	////General
-	//vector<vector<double>> subset_bound_in = subset_bound_y_in(data);
-	//vector<vector<double>> subset_bound_notin = subset_bound_y_notin(data);
-
-	vector<double> upper_bound_denominator(data.number_customers);
-	for (int i = 0; i < data.number_customers; ++i)
-		upper_bound_denominator[i] = calculate_optimal_bound_denominator(data, i);
-
-	auto start = chrono::steady_clock::now();
-
-	//Calculate initial_x
-	//vector<int> initial_x(data.number_products, 0);
-	vector<int> initial_x = greedy(data, alpha);
-	//vector<int> initial_x = greedy_general(data, alpha);
-	vector<double> initial_y(data.number_customers, 0);
-
-	GRBEnv env = GRBEnv(true);
-	env.start();
-
-	GRBModel model = GRBModel(env);
-
-	//cout << "Decison variables : x\n" << endl;
-	GRBVar* x;
-	x = new GRBVar[data.number_products];
-	for (int j = 0; j < data.number_products; ++j)
-		x[j] = model.addVar(0, 1, 0, GRB_BINARY, "x_" + to_string(j));
-
-	//cout << "Slack variables : y_i\n" << endl;
-	vector<double> upper_bound_y(data.number_customers, 0);
-	vector<double> lower_bound_y(data.number_customers, 0);
-	for (int i = 0; i < data.number_customers; ++i) {
-		lower_bound_y[i] = 1 / upper_bound_denominator[i];
-		upper_bound_y[i] = 1 / data.no_purchase[i];
-	}
-
-	GRBVar* y;
-	y = new GRBVar[data.number_customers];
-	for (int i = 0; i < data.number_customers; ++i)
-		y[i] = model.addVar(lower_bound_y[i], upper_bound_y[i], 0, GRB_CONTINUOUS, "y_" + to_string(i));
-
-	GRBVar** z;
-	z = new GRBVar * [data.number_customers];
-	for (int i = 0; i < data.number_customers; ++i)
-		z[i] = new GRBVar[data.number_products];
-	for (int i = 0; i < data.number_customers; ++i)
-		for (int j = 0; j < data.number_products; ++j)
-			z[i][j] = model.addVar(0, upper_bound_y[i], 0, GRB_CONTINUOUS, "z_" + to_string(i) + "_" + to_string(j));
-
-	//Set capacity constraints
-	for (int s = 0; s < data.number_sets; ++s) {
-		GRBLinExpr sum;
-		for (int j = 0; j < data.number_products; ++j)
-			if (data.in_set[j][s] == 1)
-				sum += data.cost[j] * x[j];
-		model.addConstr(sum <= data.capacity_each_set, "ct_set_cap" + to_string(s));
-	}
-
-	////General
-	//for (int s = 0; s < 10; ++s) {
-	//	GRBLinExpr sum;
-	//	for (int j = 0; j < data.number_products; ++j)
-	//		if (data.in_set[j][s] == 1)
-	//			sum += data.cost[j] * x[j];
-	//	model.addConstr(sum <= data.sub_capacity_each_set, "ct_set_cap" + to_string(s));
-	//}
-
-	//GRBLinExpr cost;
-	//for (int j = 0; j < data.number_products; ++j)
-	//	cost += data.fraction2[j] * x[j];
-	//model.addConstr(cost <= data.capacity_each_set, "ct_set_cap");
-
-	//cout << "z_ij = y_i * x_j\n" << endl;
-	for (int i = 0; i < data.number_customers; ++i)
-		for (int j = 0; j < data.number_products; ++j) {
-			//model.addConstr(y[i] - z[i][j] <= upper_bound_y[i] - upper_bound_y[i] * x[j]);
-			//model.addConstr(z[i][j] <= upper_bound_y[i] * x[j]);
-			model.addConstr(z[i][j] <= y[i]);
-		}
-
-	//cout << "McCornick constraints" << endl;
-	for (int i = 0; i < data.number_customers; ++i)
-		for (int j = 0; j < data.number_products; ++j) {
-			model.addConstr(z[i][j] <= x[j] * (1 / (data.no_purchase[i] + data.utilities[i][j])));
-
-			//if(bound_in[i][j] >= subset_bound_in[i][j])
-			model.addConstr(z[i][j] >= x[j] * (1 / (data.no_purchase[i] + bound_in[i][j])));
-			//else
-				//model.addConstr(z[i][j] >= x[j] * (1 / (data.no_purchase[i] + subset_bound_in[i][j])));
-
-			//if (bound_notin[i][j] >= subset_bound_notin[i][j])
-			model.addConstr(z[i][j] <= y[i] - (1 - x[j]) * (1 / (data.no_purchase[i] + bound_notin[i][j])));
-			//else
-				//model.addConstr(z[i][j] <= y[i] - (1 - x[j]) * (1 / (data.no_purchase[i] + subset_bound_notin[i][j])));
-
-			model.addConstr(z[i][j] >= y[i] - (1 - x[j]) * (1 / data.no_purchase[i]));
-		}
-
-	//Objective
-	GRBLinExpr obj;
-	for (int i = 0; i < data.number_customers; ++i) {
-		obj += data.fraction[i] * data.no_purchase[i] * alpha[i] * y[i];
-		for (int j = 0; j < data.number_products; ++j)
-			obj += data.fraction[i] * data.utilities[i][j] * (alpha[i] - data.revenue[i][j]) * z[i][j];
-	}
-
-	model.setObjective(obj, GRB_MINIMIZE);
-
-	auto time_before_cut = chrono::steady_clock::now();
-	chrono::duration<double> before_cut = time_before_cut - start;
-
-	double run_time = time_limit - before_cut.count();
-
-	int num_iterative = 0;
-	double stop_param = 1e-4;
-	double sub_obj = 1.0;
-	double obj_val_cplex = 0.0;
-	double best_sub_obj = 0;
-	vector<int> best_x = initial_x;
-	double best_obj = calculate_master_obj(data, best_x);
-
-	while (sub_obj > obj_val_cplex + stop_param) {
-		vector<double> initial_denominator = calculate_denominator(data, initial_x);
-
-		//Calculate subgradient y
-		vector<double> partitial_y(data.number_customers, 0);
-		for (int i = 0; i < data.number_customers; ++i)
-			partitial_y[i] = 1 / initial_denominator[i];
-
-		vector<vector<double>> subgradient_y(data.number_customers);
-		for (int i = 0; i < data.number_customers; ++i)
-			subgradient_y[i].resize(data.number_products, 0);
-
-		for (int i = 0; i < data.number_customers; ++i)
-			for (int j = 0; j < data.number_products; ++j)
-				subgradient_y[i][j] -= data.utilities[i][j] / (initial_denominator[i] * initial_denominator[i]);
-
-		//cout << "Outer-cuts\n" << endl;
-		for (int i = 0; i < data.number_customers; ++i) {
-			GRBLinExpr grad;
-			for (int j = 0; j < data.number_products; ++j)
-				grad += subgradient_y[i][j] * (x[j] - initial_x[j]);
-
-			model.addConstr(y[i] >= partitial_y[i] + grad, "ct_sub_gradient_y_" + to_string(i));
-		}
-
-		////cout << "Calculate total utility\n" << endl;
-		//vector<double> sum_uti_customer(data.number_customers, 0);
-		//for (int i = 0; i < data.number_customers; ++i) {
-		//	sum_uti_customer[i] += data.no_purchase[i];
-		//	for (int j = 0; j < data.number_products; ++j)
-		//		sum_uti_customer[i] += data.utilities[i][j];
-		//}
-
-		////cout << "Submodular-cuts\n" << endl;
-		//for (int i = 0; i < data.number_customers; ++i) {
-		//	if (initial_y[i] < partitial_y[i]) {
-		//		GRBLinExpr submodular_cut_a_z, submodular_cut_b_z;
-		//		for (int j = 0; j < data.number_products; ++j)
-		//			if (initial_x[j] == 1) {
-		//				submodular_cut_a_z += (1 - x[j]) * data.utilities[i][j] /
-		//					(sum_uti_customer[i] * (sum_uti_customer[i] - data.utilities[i][j]));
-		//				submodular_cut_b_z += (1 - x[j]) * data.utilities[i][j] /
-		//					(initial_denominator[i] * (initial_denominator[i] - data.utilities[i][j]));
-		//			}
-		//			else {
-		//				submodular_cut_a_z -= x[j] * data.utilities[i][j] /
-		//					(initial_denominator[i] * (initial_denominator[i] + data.utilities[i][j]));
-		//				submodular_cut_b_z -= x[j] * data.utilities[i][j] /
-		//					(data.no_purchase[i] * (data.no_purchase[i] + data.utilities[i][j]));
-		//			}
-
-		//		submodular_cut_a_z += partitial_y[i];
-		//		model.addConstr(y[i] >= submodular_cut_a_z, "ct_sub_modular_a_z_" + to_string(i));
-		//		submodular_cut_b_z += partitial_y[i];
-		//		model.addConstr(y[i] >= submodular_cut_b_z, "ct_sub_modular_b_z_" + to_string(i));
-		//	}
-		//}
-
-		//solve
-		num_iterative++;
-		cout << "Remaining time: " << run_time << endl;
-
-		model.write("submodular.lp");
-		model.set(GRB_DoubleParam_TimeLimit, run_time);
-		model.set(GRB_IntParam_Threads, 8);
-		model.set(GRB_DoubleParam_MIPGap, 1e-3);
-		//model.set(GRB_IntParam_MIQCPMethod, 1);
-		//model.set(GRB_IntParam_OutputFlag, 0);
-
-		model.optimize();
-
-		if (model.get(GRB_IntAttr_SolCount) > 0) {
-			cout << "\nIteration " << num_iterative << endl;
-			//update obj, variables
-			obj_val_cplex = model.get(GRB_DoubleAttr_ObjVal);
-			cout << "\nResult product list: " << endl;
-			for (int j = 0; j < data.number_products; ++j)
-				if (x[j].get(GRB_DoubleAttr_X) > 0.5) {
-					initial_x[j] = 1;
-					cout << j << " ";
-				}
-				else initial_x[j] = 0;
-			cout << endl;
-
-			for (int i = 0; i < data.number_customers; ++i)
-				initial_y[i] = y[i].get(GRB_DoubleAttr_X);
-
-			initial_denominator = calculate_denominator(data, initial_x);
-
-			//check the in equation related to theta_j, x_j and y_j for next iteration
-			sub_obj = 0;
-			for (int i = 0; i < data.number_customers; ++i) {
-				sub_obj += data.fraction[i] * data.no_purchase[i] * alpha[i] / initial_denominator[i];
-				for (int j = 0; j < data.number_products; ++j)
-					sub_obj += data.fraction[i] * data.utilities[i][j] * (alpha[i] - data.revenue[i][j]) * initial_x[j] / initial_denominator[i];
-			}
-
-			cout << "Sub obj = " << std::setprecision(7) << fixed << sub_obj << endl;
-			cout << "Gurobi obj = " << std::setprecision(7) << fixed << obj_val_cplex << endl;
-			master_obj_val = calculate_master_obj(data, initial_x);
-			cout << "Master obj = " << std::setprecision(7) << fixed << master_obj_val << endl;
-
-			if (master_obj_val >= best_obj) {
-				best_obj = master_obj_val;
-				best_x = initial_x;
-				best_sub_obj = obj_val_cplex;
-			}
-
-			//check time
-			auto time_now = std::chrono::steady_clock::now(); //get now time
-			std::chrono::duration<double> after_cut = time_now - start;
-			cout << "Time now: " << after_cut.count() << endl;
-			cout << "--- --- --- --- --- --- ---" << endl;
-
-			if (after_cut.count() > time_limit) break;
-			run_time = time_limit - after_cut.count();
-		}
-		else {
-			cout << "Iteration " << num_iterative << ". No solution found..." << endl;
-			auto end = chrono::steady_clock::now();
-			chrono::duration<double> elapsed_seconds = end - start;
-			time_for_solve = elapsed_seconds.count();
-			break;
-		}
-	}
-	auto end = chrono::steady_clock::now();
-	chrono::duration<double> total_time = end - start;
-	time_for_solve = total_time.count();
-
-	cout << "\nObjective value: " << setprecision(5) << best_obj << endl;
-	cout << "Solution: ";
-	for (int j = 0; j < data.number_products; ++j)
-		if (best_x[j] == 1)
-			cout << j << " ";
-	cout << "\nTotal time: " << time_for_solve << " seconds" << endl;
-
-	ofstream report_results(out_res_csv, ofstream::out);
-	report_results.precision(10);
-	report_results << best_sub_obj << " " << best_obj << " " << time_for_solve << endl;
-	for (int j = 0; j < data.number_products; ++j)
-		if (best_x[j] == 1)
-			report_results << j << " ";
-	report_results.close();
-}
-
-void Submodular::solve(Data data) {
+void CuttingPlane::solve_milp(Data data) {
 	//auto start = chrono::steady_clock::now();
 
 	vector<double> alpha(data.number_customers, -1);
@@ -1026,7 +750,7 @@ void Submodular::solve(Data data) {
 	report_results.close();
 }
 
-void Submodular::solve_multicut(Data data, int number_cuts) {
+void CuttingPlane::solve_multicut_milp(Data data, int number_cuts) {
 	//auto start = chrono::steady_clock::now();
 
 	vector<double> alpha(data.number_customers, -1);
@@ -1438,7 +1162,7 @@ void Submodular::solve_multicut(Data data, int number_cuts) {
 	report_results.close();
 }
 
-void Submodular::solve_bi(Data data) {
+void CuttingPlane::solve_bi(Data data) {
 	//auto start = chrono::steady_clock::now();
 
 	vector<double> alpha(data.number_customers, -1);
@@ -1805,7 +1529,7 @@ void Submodular::solve_bi(Data data) {
 	report_results.close();
 }
 
-void Submodular::solve_multicut_bi(Data data, int number_cuts) {
+void CuttingPlane::solve_multicut_bi(Data data, int number_cuts) {
 	//auto start = chrono::steady_clock::now();
 
 	vector<double> alpha(data.number_customers, -1);
@@ -2214,7 +1938,7 @@ void Submodular::solve_multicut_bi(Data data, int number_cuts) {
 	report_results.close();
 }
 
-void Submodular::solve_multi_multicut(Data data, int number_cuts, int number_cuts_theta) {
+void CuttingPlane::solve_multi_multicut(Data data, int number_cuts, int number_cuts_theta) {
 	//auto start = chrono::steady_clock::now();
 
 	vector<double> alpha(data.number_customers, -1);

@@ -1,25 +1,25 @@
-#include "BCConic.h"
+#include "BranchandCut.h"
 #include <chrono>
 #include <algorithm>
 #include <sstream>
 #include <cstdlib>
 #include <cassert>
 
-BCConic::BCConic() {
+BranchandCut::BranchandCut() {
 
 }
 
-BCConic::BCConic(Data data, double time_limit, string outfile) {
+BranchandCut::BranchandCut(Data data, double time_limit, string outfile) {
 	this->data = data;
 	this->time_limit = time_limit;
 	this->out_res_csv = outfile;
 }
 
-CBConic::CBConic() {
+CBBranchandCut::CBBranchandCut() {
 
 }
 
-CBConic::CBConic(GRBVar* varx, GRBVar* vary, int p, int c, vector<double> n, vector<vector<double>> u, vector<vector<double>> r) {
+CBBranchandCut::CBBranchandCut(GRBVar* varx, GRBVar* vary, int p, int c, vector<double> n, vector<vector<double>> u, vector<vector<double>> r) {
 	x = varx;
 	y = vary;
 	products = p;
@@ -29,7 +29,7 @@ CBConic::CBConic(GRBVar* varx, GRBVar* vary, int p, int c, vector<double> n, vec
 	ren = r;
 }
 
-double BCConic::calculate_optimal_bound_denominator(Data data, int i) {
+double BranchandCut::calculate_optimal_bound_denominator(Data data, int i) {
 	GRBEnv env = GRBEnv(true);
 	env.start();
 
@@ -65,7 +65,7 @@ double BCConic::calculate_optimal_bound_denominator(Data data, int i) {
 	return model.get(GRB_DoubleAttr_ObjVal) + data.no_purchase[i];
 }
 
-double BCConic::calculate_master_obj(Data data, vector<int> x) {
+double BranchandCut::calculate_master_obj(Data data, vector<int> x) {
 	double obj = 0;
 	for (int i = 0; i < data.number_customers; ++i) {
 		double ts = 0, ms = data.no_purchase[i];
@@ -79,7 +79,7 @@ double BCConic::calculate_master_obj(Data data, vector<int> x) {
 	return obj;
 }
 
-vector<vector<double>> BCConic::calculate_bound_y_in(Data data) {
+vector<vector<double>> BranchandCut::calculate_bound_y_in(Data data) {
 	vector<vector<double>> lb_in(data.number_customers);
 	for (int i = 0; i < data.number_customers; ++i)
 		lb_in[i].resize(data.number_products);
@@ -117,7 +117,7 @@ vector<vector<double>> BCConic::calculate_bound_y_in(Data data) {
 	return lb_in;
 }
 
-vector<vector<double>> BCConic::calculate_bound_y_notin(Data data) {
+vector<vector<double>> BranchandCut::calculate_bound_y_notin(Data data) {
 	vector<vector<double>> lb_notin(data.number_customers);
 	for (int i = 0; i < data.number_customers; ++i)
 		lb_notin[i].resize(data.number_products);
@@ -155,7 +155,7 @@ vector<vector<double>> BCConic::calculate_bound_y_notin(Data data) {
 	return lb_notin;
 }
 
-vector<vector<double>> BCConic::subset_bound_y_in(Data data) {
+vector<vector<double>> BranchandCut::subset_bound_y_in(Data data) {
 	vector<vector<double>> lb_in(data.number_customers);
 	for (int i = 0; i < data.number_customers; ++i)
 		lb_in[i].resize(data.number_products);
@@ -186,7 +186,7 @@ vector<vector<double>> BCConic::subset_bound_y_in(Data data) {
 	return lb_in;
 }
 
-vector<vector<double>> BCConic::subset_bound_y_notin(Data data) {
+vector<vector<double>> BranchandCut::subset_bound_y_notin(Data data) {
 	vector<vector<double>> lb_notin(data.number_customers);
 	for (int i = 0; i < data.number_customers; ++i)
 		lb_notin[i].resize(data.number_products);
@@ -217,7 +217,7 @@ vector<vector<double>> BCConic::subset_bound_y_notin(Data data) {
 	return lb_notin;
 }
 
-void BCConic::solve_multicut_psi(Data data) {
+void BranchandCut::solve_multicut_bi(Data data) {
 	vector<double> alpha(data.number_customers, -1);
 	for (int i = 0; i < data.number_customers; ++i)
 		for (int j = 0; j < data.number_products; ++j)
@@ -337,7 +337,7 @@ void BCConic::solve_multicut_psi(Data data) {
 	model.set(GRB_IntParam_Threads, 8);
 	//model.set(GRB_IntParam_OutputFlag, 0);
 
-	CBConic cb = CBConic(x, y, data.number_products, data.number_customers, data.no_purchase, data.utilities, data.revenue);
+	CBBranchandCut cb = CBBranchandCut(x, y, data.number_products, data.number_customers, data.no_purchase, data.utilities, data.revenue);
 	model.setCallback(&cb);
 
 	auto start = chrono::steady_clock::now();
@@ -395,7 +395,199 @@ void BCConic::solve_multicut_psi(Data data) {
 	report_results.close();
 }
 
-void CBConic::callback() {
+void BranchandCut::solve_multicut_milp(Data data) {
+	vector<double> alpha(data.number_customers, -1);
+	for (int i = 0; i < data.number_customers; ++i)
+		for (int j = 0; j < data.number_products; ++j)
+			if (data.revenue[i][j] > alpha[i])
+				alpha[i] = data.revenue[i][j];
+
+	vector<vector<double>> bound_in = calculate_bound_y_in(data);
+	vector<vector<double>> bound_notin = calculate_bound_y_notin(data);
+	////General
+	//vector<vector<double>> subset_bound_in = subset_bound_y_in(data);
+	//vector<vector<double>> subset_bound_notin = subset_bound_y_notin(data);
+
+	vector<double> upper_bound_denominator(data.number_customers);
+	for (int i = 0; i < data.number_customers; ++i)
+		upper_bound_denominator[i] = calculate_optimal_bound_denominator(data, i);
+
+	//auto start = chrono::steady_clock::now();
+
+	GRBEnv env = GRBEnv(true);
+	env.start();
+
+	GRBModel model = GRBModel(env);
+
+	//cout << "Decison variables : x\n" << endl;
+	GRBVar* x;
+	x = new GRBVar[data.number_products];
+	for (int j = 0; j < data.number_products; ++j)
+		x[j] = model.addVar(0, 1, 0, GRB_BINARY, "x_" + to_string(j));
+
+	//cout << "Slack variables : y_i\n" << endl;
+	vector<double> upper_bound_y(data.number_customers, 0);
+	vector<double> lower_bound_y(data.number_customers, 0);
+	for (int i = 0; i < data.number_customers; ++i) {
+		lower_bound_y[i] = 1 / upper_bound_denominator[i];
+		upper_bound_y[i] = 1 / data.no_purchase[i];
+	}
+
+	GRBVar* y;
+	y = new GRBVar[data.number_customers];
+	for (int i = 0; i < data.number_customers; ++i)
+		y[i] = model.addVar(lower_bound_y[i], upper_bound_y[i], 0, GRB_CONTINUOUS, "y_" + to_string(i));
+
+	GRBVar** z;
+	z = new GRBVar * [data.number_customers];
+	for (int i = 0; i < data.number_customers; ++i)
+		z[i] = new GRBVar[data.number_products];
+	for (int i = 0; i < data.number_customers; ++i)
+		for (int j = 0; j < data.number_products; ++j)
+			z[i][j] = model.addVar(0, upper_bound_y[i], 0, GRB_CONTINUOUS, "z_" + to_string(i) + "_" + to_string(j));
+
+	//Set capacity constraints
+	for (int s = 0; s < data.number_sets; ++s) {
+		GRBLinExpr sum;
+		for (int j = 0; j < data.number_products; ++j)
+			if (data.in_set[j][s] == 1)
+				sum += data.cost[j] * x[j];
+		model.addConstr(sum <= data.capacity_each_set, "ct_set_cap" + to_string(s));
+	}
+
+	////General
+	//for (int s = 0; s < 5; ++s) {
+	//	GRBLinExpr sum;
+	//	for (int j = 0; j < data.number_products; ++j)
+	//		if (data.in_set[j][s] == 1)
+	//			sum += data.cost[j] * x[j];
+	//	model.addConstr(sum <= data.sub_capacity_each_set, "ct_set_cap" + to_string(s));
+	//}
+
+	//GRBLinExpr cost;
+	//for (int j = 0; j < data.number_products; ++j)
+	//	cost += data.fraction2[j] * x[j];
+	//model.addConstr(cost <= data.capacity_each_set, "ct_set_cap");
+
+	//cout << "Constraints related to y and z\n" << endl;
+	for (int i = 0; i < data.number_customers; ++i) {
+		GRBLinExpr sum_z;
+		for (int j = 0; j < data.number_products; ++j)
+			sum_z += data.utilities[i][j] * z[i][j];
+
+		model.addConstr(data.no_purchase[i] * y[i] + sum_z >= 1);
+	}
+
+	//cout << "z_ij = y_i * x_j\n" << endl;
+	for (int i = 0; i < data.number_customers; ++i)
+		for (int j = 0; j < data.number_products; ++j) {
+			//model.addConstr(y[i] - z[i][j] <= upper_bound_y[i] - upper_bound_y[i] * x[j]);
+			//model.addConstr(z[i][j] <= upper_bound_y[i] * x[j]);
+			model.addConstr(z[i][j] <= y[i]);
+		}
+
+	//McCornick constraints
+	for (int i = 0; i < data.number_customers; ++i)
+		for (int j = 0; j < data.number_products; ++j) {
+			model.addConstr(z[i][j] <= x[j] * (1 / (data.no_purchase[i] + data.utilities[i][j])));
+
+			//if (bound_in[i][j] >= subset_bound_in[i][j])
+			model.addConstr(z[i][j] >= x[j] * (1 / (data.no_purchase[i] + bound_in[i][j])));
+			//else
+				//model.addConstr(z[i][j] >= x[j] * (1 / (data.no_purchase[i] + subset_bound_in[i][j])));
+
+			//if (bound_notin[i][j] >= subset_bound_notin[i][j])
+			model.addConstr(z[i][j] <= y[i] - (1 - x[j]) * (1 / (data.no_purchase[i] + bound_notin[i][j])));
+			//else
+				//model.addConstr(z[i][j] <= y[i] - (1 - x[j]) * (1 / (data.no_purchase[i] + subset_bound_notin[i][j])));
+
+			model.addConstr(z[i][j] >= y[i] - (1 - x[j]) * (1 / data.no_purchase[i]));
+		}
+
+	//Objective
+	GRBLinExpr obj;
+	for (int i = 0; i < data.number_customers; ++i) {
+		obj += data.fraction[i] * data.no_purchase[i] * alpha[i] * y[i];
+		for (int j = 0; j < data.number_products; ++j)
+			obj += data.fraction[i] * data.utilities[i][j] * (alpha[i] - data.revenue[i][j]) * z[i][j];
+	}
+
+	model.setObjective(obj, GRB_MINIMIZE);
+
+	//auto time_before_cut = chrono::steady_clock::now();
+	//chrono::duration<double> before_cut = time_before_cut - start;
+
+	//double run_time = time_limit - before_cut.count();
+
+	double obj_val_cplex = 0.0;
+
+	model.write("bc.lp");
+	model.set(GRB_IntParam_LazyConstraints, 1);
+	model.set(GRB_IntParam_PreCrush, 1);
+	//model.set(GRB_DoubleParam_TimeLimit, run_time);
+	model.set(GRB_DoubleParam_TimeLimit, time_limit);
+	model.set(GRB_IntParam_Threads, 8);
+	//model.set(GRB_IntParam_OutputFlag, 0);
+
+	CBBranchandCut cb = CBBranchandCut(x, y, data.number_products, data.number_customers, data.no_purchase, data.utilities, data.revenue);
+	model.setCallback(&cb);
+
+	auto start = chrono::steady_clock::now();
+
+	model.optimize();
+
+	auto end = chrono::steady_clock::now();
+	chrono::duration<double> total_time = end - start;
+	time_for_solve = total_time.count();
+
+	vector<int> sol_x(data.number_products);
+
+	if (model.get(GRB_IntAttr_SolCount) > 0) {
+		//update obj, variables
+		obj_val_cplex = model.get(GRB_DoubleAttr_ObjVal);
+		cout << "\nResult product list: " << endl;
+		for (int j = 0; j < data.number_products; ++j)
+			if (x[j].get(GRB_DoubleAttr_X) > 0.5) {
+				sol_x[j] = 1;
+				cout << j << " ";
+			}
+			else sol_x[j] = 0;
+		cout << endl;
+
+		cout << "Gurobi obj = " << std::setprecision(7) << fixed << obj_val_cplex << endl;
+		master_obj_val = calculate_master_obj(data, sol_x);
+		cout << "Master obj = " << std::setprecision(7) << fixed << master_obj_val << endl;
+
+		//check time
+		auto time_now = std::chrono::steady_clock::now(); //get now time
+		std::chrono::duration<double> after_cut = time_now - start;
+		cout << "Time now: " << after_cut.count() << endl;
+		cout << "--- --- --- --- --- --- ---" << endl;
+	}
+	else {
+		cout << "No solution found..." << endl;
+		auto end = chrono::steady_clock::now();
+		chrono::duration<double> elapsed_seconds = end - start;
+		time_for_solve = elapsed_seconds.count();
+	}
+
+	cout << "\nObjective value: " << setprecision(5) << master_obj_val << endl;
+	cout << "Solution: ";
+	for (int j = 0; j < data.number_products; ++j)
+		if (sol_x[j] == 1)
+			cout << j << " ";
+	cout << "\nTotal time: " << time_for_solve << " seconds" << endl;
+
+	ofstream report_results(out_res_csv, ofstream::out);
+	report_results.precision(10);
+	report_results << obj_val_cplex << " " << master_obj_val << " " << time_for_solve << endl;
+	for (int j = 0; j < data.number_products; ++j)
+		if (sol_x[j] == 1)
+			report_results << j << " ";
+	report_results.close();
+}
+
+void CBBranchandCut::callback() {
 	try {
 		if (where == GRB_CB_MIPSOL) {
 			double* initial_x = new double[products];

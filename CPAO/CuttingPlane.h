@@ -11,22 +11,7 @@
 #include "ProblemReader.h"
 using namespace std;
 
-class CBSubmodular : public GRBCallback {
-public:
-    int products;
-    int customers;
-    vector<double> noPay;
-    vector<vector<double>> util;
-    vector<vector<double>> ren;
-    GRBVar* x;
-    GRBVar* y;
-    CBSubmodular();
-    CBSubmodular(GRBVar* x, GRBVar* y, int products, int customers, vector<double> noPay, vector<vector<double>> util, vector<vector<double>> ren);
-protected:
-    void callback();
-};
-
-class BCSubmodular {
+class CuttingPlane {
 public:
     Data data;
     string output;
@@ -37,14 +22,23 @@ public:
     double gap;
     double time_for_solve;
     char var_name[1000];
-    BCSubmodular();
-    BCSubmodular(Data data, double time_limit, string outfile);
+    CuttingPlane();
+    CuttingPlane(Data data, double time_limit, string outfile);
+    vector<double> calculate_denominator(Data data, vector<int> x);
     double calculate_z(Data data, vector<double> alpha, vector<double> denominator);
     double calculate_optimal_bound_denominator(Data data, int i);
+    double calculate_original_obj(Data data, vector<int> x, vector<double> alpha);
     double calculate_master_obj(Data data, vector<int> x);
+    double calculate_original_obj_tmp(Data data, vector<int> x, vector<double> alpha, int i);
+    vector<int> greedy(Data data, vector<double> alpha);
+    vector<int> greedy_general(Data data, vector<double> alpha);
     vector<vector<double>> calculate_bound_y_in(Data data);
     vector<vector<double>> calculate_bound_y_notin(Data data);
     vector<vector<double>> subset_bound_y_in(Data data);
     vector<vector<double>> subset_bound_y_notin(Data data);
-    void solve_multicut_psi(Data data);
+    void solve_milp(Data data);
+    void solve_multicut_milp(Data data, int number_cut);
+    void solve_bi(Data data);
+    void solve_multicut_bi(Data data, int number_cuts);
+    void solve_multi_multicut(Data data, int number_cut, int number_cut_theta);
 };
