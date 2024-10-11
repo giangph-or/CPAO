@@ -40,5 +40,6 @@ public:
     void solve_multicut_milp(Data data, int number_cut);
     void solve_bi(Data data);
     void solve_multicut_bi(Data data, int number_cuts);
-    void solve_multi_multicut(Data data, int number_cut, int number_cut_theta);
+    void solve_multi_multicut_bi(Data data, int number_cut, int number_cut_theta);
+    void solve_multi_multicut_milp(Data data, int number_cut, int number_cut_theta);
 };

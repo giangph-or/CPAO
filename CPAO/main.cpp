@@ -118,6 +118,20 @@ int main(int argc, char* argv[]) {
         suboa.solve_multicut_bi(data_Sen, 20);
     }
 
+    if (model == "CPLiMulti") {
+        //string subBudget = argv[5];
+        string out_file = "result_cplimulti//" + instance_name + "_" + no_pay + "_" + budget + ".txt";
+        CuttingPlane suboa(data_Sen, time_limit, out_file);
+        suboa.solve_multi_multicut_milp(data_Sen, 20, 20);
+    }
+
+    if (model == "CPBiMulti") {
+        //string subBudget = argv[5];
+        string out_file = "result_cpbimulti//" + instance_name + "_" + no_pay + "_" + budget + ".txt";
+        CuttingPlane suboa(data_Sen, time_limit, out_file);
+        suboa.solve_multi_multicut_bi(data_Sen, 20, 20);
+    }
+
     if (model == "BCLi") {
         //string subBudget = argv[5];
         string out_file = "result_bcli//" + instance_name + "_" + no_pay + "_" + budget + ".txt";
