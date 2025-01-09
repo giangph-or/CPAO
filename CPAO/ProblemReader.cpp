@@ -74,12 +74,12 @@ void Data::read_data_Sen(string data, double noPay, double budget) {
     //    input >> cost[j];
 
     //200_20 and 500_50
-    //fraction.resize(number_customers, 1);
+    fraction.resize(number_customers, 1);
 
-    //100_100 and 1000_100 and larger number of customers
-    fraction.resize(number_customers);
-    for (int i = 0; i < number_customers; ++i)
-        input >> fraction[i];
+    ////100_100 and 1000_100 and larger number of customers
+    //fraction.resize(number_customers);
+    //for (int i = 0; i < number_customers; ++i)
+    //    input >> fraction[i];
 
     in_set.resize(number_products);
     int set_id;

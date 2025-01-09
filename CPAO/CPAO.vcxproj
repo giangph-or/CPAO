@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClInclude Include="BranchandCut.h" />
     <ClInclude Include="BCMulticut.h" />
+    <ClInclude Include="CEFlog.h" />
     <ClInclude Include="Conic.h" />
     <ClInclude Include="ProblemReader.h" />
     <ClInclude Include="CuttingPlane.h" />
@@ -28,6 +29,7 @@
   <ItemGroup>
     <ClCompile Include="BranchandCut.cpp" />
     <ClCompile Include="BCMulticut.cpp" />
+    <ClCompile Include="CEFlog.cpp" />
     <ClCompile Include="Conic.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="ProblemReader.cpp" />

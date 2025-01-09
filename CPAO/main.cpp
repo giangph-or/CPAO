@@ -1,6 +1,7 @@
 #include<iostream>
 #include "ProblemReader.h"
 #include "Conic.h"
+#include "CEFlog.h"
 #include "CuttingPlane.h"
 #include "BranchandCut.h"
 #include "BCMulticut.h"
@@ -13,7 +14,7 @@ int main(int argc, char* argv[]) {
     string instance_name = argv[1];
     string no_pay = argv[2];
     string model = argv[3];
-    string instance_file = "Sen_data//" + instance_name + ".dat";
+    string instance_file = "AO_data//" + instance_name + ".dat";
     double time_limit = 3600;
     double noPay = stod(no_pay);
     string budget = argv[4];
@@ -55,6 +56,12 @@ int main(int argc, char* argv[]) {
         //report_results.precision(10);
         //report_results << model.get(GRB_DoubleAttr_ObjVal) << " " << total_alpha - model.get(GRB_DoubleAttr_ObjVal) << " " << solvingTime.count();
         //report_results.close();
+    }
+
+    if (model == "CEFlog") {
+        string out_file = "result_ceflog//" + instance_name + "_" + no_pay + "_" + budget + ".txt";
+        CEFlog ceflog(data_Sen, time_limit, out_file);
+        ceflog.solve(data_Sen);
     }
 
     if (model == "MILP") {

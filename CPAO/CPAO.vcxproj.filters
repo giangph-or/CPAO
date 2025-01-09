@@ -30,6 +30,9 @@
     <ClInclude Include="BCMulticut.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="CEFlog.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ProblemReader.cpp">
@@ -48,6 +51,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="BCMulticut.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CEFlog.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
