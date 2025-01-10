@@ -119,9 +119,10 @@ void CEFlog::solve(Data data) {
 		//else frac = round(data.fraction[i] * multiply);
 		double sum_uti = 0;
 		for (int j = 0; j < data.number_products; ++j)
-			sum_uti += round(data.utilities[i][j] * multiply) * round((alpha[i] - data.revenue[i][j]) * multiply);
+			sum_uti += round(data.utilities[i][j] * (alpha[i] - data.revenue[i][j]) * multiply);
 
 		index_w[i] = log2(sum_uti) + 1;
+		//cout << sum_uti << " " << index_w[i] << endl;
 	}
 
 	//cout << "Slack variables: w_{ik}\n" << endl;
@@ -174,7 +175,7 @@ void CEFlog::solve(Data data) {
 		GRBLinExpr sum = 0;
 		for (int k = 1; k <= index_w[i]; ++k)
 			sum += pow(2, k - 1) * z[i][k];
-		model.addConstr(t[i] >= sum + round(data.no_purchase[i] * multiply) * round(alpha[i] * multiply) * y[i]);
+		model.addConstr(t[i] >= sum + round(data.no_purchase[i] * alpha[i] * multiply) * y[i]);
 	}
 
 	//cout << "Constraints related to r and x\n" << endl;
@@ -204,7 +205,7 @@ void CEFlog::solve(Data data) {
 		//if (round(data.fraction[i] * multiply) == 0) frac = 1;
 		//else frac = round(data.fraction[i] * multiply);
 		for (int j = 0; j < data.number_products; ++j)
-			sum_x += round(data.utilities[i][j] * multiply) * round((alpha[i] - data.revenue[i][j]) * multiply) * x[j];
+			sum_x += round(data.utilities[i][j] * (alpha[i] - data.revenue[i][j]) * multiply) * x[j];
 
 		model.addConstr(sum_x == sum_w);
 	}
@@ -221,7 +222,7 @@ void CEFlog::solve(Data data) {
 
 	////cout << "Polymatroid constraints" << endl;
 	//for (int i = 0; i < data.number_customers; ++i) {
-	//	GRBQuadExpr sum = round(data.no_purchase[i] * 10) * round(alpha[i] * 10);
+	//	GRBQuadExpr sum = round(data.no_purchase[i] * alpha[i] * multiply);
 	//	for (int k = 1; k <= index_w[i]; ++k)
 	//		sum += pow(2, k - 1) * w[i][k] * w[i][k];
 	//	model.addQConstr(t[i] * r[i] >= sum);
@@ -230,24 +231,24 @@ void CEFlog::solve(Data data) {
 	for (int i = 0; i < data.number_customers; ++i)
 		model.addQConstr(t[i] * r[i] >= s[i] * s[i]);
 
-	for (int i = 0; i < data.number_customers; ++i) {
-		vector<double> gamma(index_w[i] + 1);
-		vector<double> lambda(index_w[i] + 1);
-		//double frac = 0;
-		//if (round(data.fraction[i] * multiply) == 0) frac = 1;
-		//else frac = round(data.fraction[i] * multiply);
-		gamma[0] = round(data.no_purchase[i] * multiply) * round(alpha[i] * multiply);
-		for (int k = 1; k <= index_w[i]; ++k)
-			gamma[k] = pow(2, k - 1) + gamma[k - 1];
-		for (int k = 1; k <= index_w[i]; ++k)
-			lambda[k] = sqrt(gamma[k]) - sqrt(gamma[k - 1]);
+	//for (int i = 0; i < data.number_customers; ++i) {
+	//	vector<double> gamma(index_w[i] + 1);
+	//	vector<double> lambda(index_w[i] + 1);
+	//	//double frac = 0;
+	//	//if (round(data.fraction[i] * multiply) == 0) frac = 1;
+	//	//else frac = round(data.fraction[i] * multiply);
+	//	gamma[0] = round(data.no_purchase[i] * alpha[i] * multiply);
+	//	for (int k = 1; k <= index_w[i]; ++k)
+	//		gamma[k] = pow(2, k - 1) + gamma[k - 1];
+	//	for (int k = 1; k <= index_w[i]; ++k)
+	//		lambda[k] = sqrt(gamma[k]) - sqrt(gamma[k - 1]);
 
-		GRBLinExpr sum = sqrt(gamma[0]);
-		for (int k = 1; k <= index_w[i]; ++k)
-			sum += lambda[k] * w[i][k];
+	//	GRBLinExpr sum = sqrt(gamma[0]);
+	//	for (int k = 1; k <= index_w[i]; ++k)
+	//		sum += lambda[k] * w[i][k];
 
-		model.addConstr(s[i] >= sum);
-	}
+	//	model.addConstr(s[i] >= sum);
+	//}
 
 	for (int i = 0; i < data.number_customers; ++i) {
 		int num_polymatroid_cuts = 0;
@@ -255,14 +256,14 @@ void CEFlog::solve(Data data) {
 		for (int k = 0; k <= index_w[i]; ++k)
 			permutation.push_back(k);
 
-		while (num_polymatroid_cuts < 10) {
+		while (num_polymatroid_cuts < data.number_products) {
 			random_shuffle(permutation.begin() + 1, permutation.end());
 			vector<double> gamma(index_w[i] + 1);
 			vector<double> lambda(index_w[i] + 1);
 			//double frac = 0;
 			//if (round(data.fraction[i] * multiply) == 0) frac = 1;
 			//else frac = round(data.fraction[i] * multiply);
-			gamma[0] = round(data.no_purchase[i] * 100) * round(alpha[i] * 100);
+			gamma[0] = round(data.no_purchase[i] * alpha[i] * multiply);
 			for (int k = 1; k <= index_w[i]; ++k)
 				gamma[permutation[k]] = pow(2, permutation[k] - 1) + gamma[permutation[k - 1]];
 			for (int k = 1; k <= index_w[i]; ++k)
@@ -391,14 +392,14 @@ void CBPolymatroid::callback() {
 				for (int k = 0; k <= index_w[i]; ++k)
 					permutation.push_back(k);
 
-				while (num_polymatroid_cuts < 11) {
+				while (num_polymatroid_cuts < 10) {
 					random_shuffle(permutation.begin() + 1, permutation.end());
 					vector<double> gamma(index_w[i] + 1);
 					vector<double> lambda(index_w[i] + 1);
 					//double frac = 0;
 					//if (round(data.fraction[i] * multiply) == 0) frac = 1;
 					//else frac = round(data.fraction[i] * multiply);
-					gamma[0] = round(data.no_purchase[i] * multiply) * round(alpha[i] * multiply);
+					gamma[0] = round(data.no_purchase[i] * alpha[i] * multiply);
 					for (int k = 1; k <= index_w[i]; ++k)
 						gamma[permutation[k]] = pow(2, permutation[k] - 1) + gamma[permutation[k - 1]];
 					for (int k = 1; k <= index_w[i]; ++k)
