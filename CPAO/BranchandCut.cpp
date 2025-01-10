@@ -388,7 +388,7 @@ void BranchandCut::solve_multicut_bi(Data data) {
 
 	ofstream report_results(out_res_csv, ofstream::out);
 	report_results.precision(10);
-	report_results << obj_val_cplex << " " << master_obj_val << " " << time_for_solve << endl;
+	report_results << obj_val_cplex << " " << master_obj_val << " " << model.get(GRB_DoubleAttr_MIPGap) << " " << time_for_solve << endl;
 	for (int j = 0; j < data.number_products; ++j)
 		if (sol_x[j] == 1)
 			report_results << j << " ";
@@ -580,7 +580,7 @@ void BranchandCut::solve_multicut_milp(Data data) {
 
 	ofstream report_results(out_res_csv, ofstream::out);
 	report_results.precision(10);
-	report_results << obj_val_cplex << " " << master_obj_val << " " << time_for_solve << endl;
+	report_results << obj_val_cplex << " " << master_obj_val << " " << model.get(GRB_DoubleAttr_MIPGap) << " " << time_for_solve << endl;
 	for (int j = 0; j < data.number_products; ++j)
 		if (sol_x[j] == 1)
 			report_results << j << " ";

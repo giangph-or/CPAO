@@ -298,23 +298,23 @@ void Conic::solve(Data data) {
         model.addConstr(data.no_purchase[i] * y[i] + sum_z >= 1);
     }
 
-    ////cout << "McCornick constraints" << endl;
-    //for (int i = 0; i < data.number_customers; ++i)
-    //    for (int j = 0; j < data.number_products; ++j) {
-    //        model.addConstr(z[i][j] <= x[j] * (1 / (data.no_purchase[i] + data.utilities[i][j])));
+    //cout << "McCornick constraints" << endl;
+    for (int i = 0; i < data.number_customers; ++i)
+        for (int j = 0; j < data.number_products; ++j) {
+            model.addConstr(z[i][j] <= x[j] * (1 / (data.no_purchase[i] + data.utilities[i][j])));
 
-    //        //if (bound_in[i][j] >= subset_bound_in[i][j])
-    //        model.addConstr(z[i][j] >= x[j] * (1 / (data.no_purchase[i] + bound_in[i][j])));
-    //        //else
-    //            //model.addConstr(z[i][j] >= x[j] * (1 / (data.no_purchase[i] + subset_bound_in[i][j])));
+            //if (bound_in[i][j] >= subset_bound_in[i][j])
+            model.addConstr(z[i][j] >= x[j] * (1 / (data.no_purchase[i] + bound_in[i][j])));
+            //else
+                //model.addConstr(z[i][j] >= x[j] * (1 / (data.no_purchase[i] + subset_bound_in[i][j])));
 
-    //        //if (bound_notin[i][j] >= subset_bound_notin[i][j])
-    //        model.addConstr(z[i][j] <= y[i] - (1 - x[j]) * (1 / (data.no_purchase[i] + bound_notin[i][j])));
-    //        //else
-    //            //model.addConstr(z[i][j] <= y[i] - (1 - x[j]) * (1 / (data.no_purchase[i] + subset_bound_notin[i][j])));
+            //if (bound_notin[i][j] >= subset_bound_notin[i][j])
+            model.addConstr(z[i][j] <= y[i] - (1 - x[j]) * (1 / (data.no_purchase[i] + bound_notin[i][j])));
+            //else
+                //model.addConstr(z[i][j] <= y[i] - (1 - x[j]) * (1 / (data.no_purchase[i] + subset_bound_notin[i][j])));
 
-    //        model.addConstr(z[i][j] >= y[i] - (1 - x[j]) * (1 / data.no_purchase[i]));
-    //    }
+            model.addConstr(z[i][j] >= y[i] - (1 - x[j]) * (1 / data.no_purchase[i]));
+        }
 
     //Set capacity constraints
     for (int s = 0; s < data.number_sets; ++s) {
@@ -400,7 +400,7 @@ void Conic::solve(Data data) {
 
     ofstream report_results(out_res_csv, ofstream::out);
     report_results.precision(10);
-    report_results << model.get(GRB_DoubleAttr_ObjVal) << " " << master_obj << " " << time_for_solve << endl;
+    report_results << model.get(GRB_DoubleAttr_ObjVal) << " " << master_obj << " " << model.get(GRB_DoubleAttr_MIPGap) << " " << time_for_solve << endl;
     for (int j = 0; j < data.number_products; ++j)
         if (x_sol[j] == 1)
             report_results << j << " ";

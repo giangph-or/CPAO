@@ -1079,7 +1079,7 @@ void CuttingPlane::solve_multicut_milp(Data data, int number_cuts) {
 		model.set(GRB_IntParam_Threads, 8);
 		//model.set(GRB_DoubleParam_MIPGap, 1e-3);
 		//model.set(GRB_IntParam_MIQCPMethod, 1);
-		//model.set(GRB_IntParam_OutputFlag, 0);
+		model.set(GRB_IntParam_OutputFlag, 0);
 
 		model.optimize();
 
@@ -1855,7 +1855,7 @@ void CuttingPlane::solve_multicut_bi(Data data, int number_cuts) {
 		//model.set(GRB_DoubleParam_MIPGap, 1e-3);
 		model.set(GRB_IntParam_MIQCPMethod, 1);
 		//model.set(GRB_IntParam_MIQCPMethod, 1);
-		//model.set(GRB_IntParam_OutputFlag, 0);
+		model.set(GRB_IntParam_OutputFlag, 0);
 
 		model.optimize();
 
